@@ -11,12 +11,14 @@ import Profile from './screens/Profile'
 import Admin from './screens/Admin'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const token = useAppSelector((state) => state.auth.token)
+  const { token, loading } = useAppSelector((state) => state.auth)
+  if (loading) return null
   return token ? <>{children}</> : <Navigate to={ROUTES.LOGIN} replace />
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { token, user } = useAppSelector((state) => state.auth)
+  const { token, user, loading } = useAppSelector((state) => state.auth)
+  if (loading) return null
   if (!token) return <Navigate to={ROUTES.LOGIN} replace />
   if (user?.role !== 'admin') return <Navigate to={ROUTES.DASHBOARD} replace />
   return <>{children}</>

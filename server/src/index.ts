@@ -15,13 +15,15 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
+const start = async () => {
+  try {
+    await mongoose.connect(MONGO_URI)
     console.log('MongoDB connected')
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error('MongoDB connection error:', err)
     process.exit(1)
-  })
+  }
+}
+
+start()
