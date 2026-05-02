@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AdminRoute matches snapshot when not authenticated 1`] = `
+<div>
+  <div>
+    Login page
+  </div>
+</div>
+`;
+
+exports[`AdminRoute matches snapshot when user is a member 1`] = `
+<div>
+  <div>
+    Dashboard page
+  </div>
+</div>
+`;
+
+exports[`AdminRoute matches snapshot when user is admin 1`] = `
+<div>
+  <div>
+    Admin content
+  </div>
+</div>
+`;

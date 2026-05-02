@@ -9,8 +9,8 @@ interface AuthState {
   loading: boolean
 }
 
-const TOKEN_KEY = 'idlr_token'
-const USER_KEY = 'idlr_user'
+export const TOKEN_KEY = 'idlr_token'
+export const USER_KEY = 'idlr_user'
 
 function loadUser(): AuthUser | null {
   try {
@@ -36,14 +36,10 @@ const authSlice = createSlice({
     setCredentials(state, action: PayloadAction<{ token: string; user: AuthUser }>) {
       state.token = action.payload.token
       state.user = action.payload.user
-      localStorage.setItem(TOKEN_KEY, action.payload.token)
-      localStorage.setItem(USER_KEY, JSON.stringify(action.payload.user))
     },
     logout(state) {
       state.token = null
       state.user = null
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem(USER_KEY)
     },
   },
 })

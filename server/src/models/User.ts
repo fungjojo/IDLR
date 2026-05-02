@@ -6,6 +6,7 @@ export interface IUser extends Document {
   passwordHash: string
   role: 'admin' | 'member'
   maxHR: number
+  // TODO: encrypt stravaAccessToken and stravaRefreshToken at rest before Strava integration ships
   stravaAccessToken?: string
   stravaRefreshToken?: string
   stravaAthleteId?: number

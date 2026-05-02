@@ -6,6 +6,7 @@ import { type AuthRequest } from '../middleware/auth'
 
 const JWT_EXPIRES = '7d'
 const MAX_PASSWORD_LENGTH = 72
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body as { email?: string; password?: string }
@@ -21,6 +22,11 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 
   const normalisedEmail = email.trim().toLowerCase()
+
+  if (!EMAIL_REGEX.test(normalisedEmail)) {
+    res.status(400).json({ message: 'Invalid email format' })
+    return
+  }
 
   try {
     const user = await User.findOne({ email: normalisedEmail })
@@ -76,6 +82,11 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
   }
 
   const normalisedEmail = email.trim().toLowerCase()
+
+  if (!EMAIL_REGEX.test(normalisedEmail)) {
+    res.status(400).json({ message: 'Invalid email format' })
+    return
+  }
 
   try {
     const existing = await User.findOne({ email: normalisedEmail })

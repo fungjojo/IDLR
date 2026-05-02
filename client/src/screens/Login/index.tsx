@@ -4,17 +4,12 @@ import { useAppDispatch } from '../../store/hooks'
 import { setCredentials } from '../../store/authSlice'
 import api from '../../services/api'
 import { ROUTES } from '../../constants/routes'
+import { type BaseUser } from '../../types/user'
 import styles from './Login.module.css'
 
 interface LoginResponse {
   token: string
-  user: {
-    id: string
-    name: string
-    email: string
-    role: 'admin' | 'member'
-    maxHR: number
-  }
+  user: BaseUser
 }
 
 export default function Login() {

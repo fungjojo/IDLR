@@ -57,10 +57,10 @@ describe('authSlice', () => {
       expect(state.user).toEqual(mockUser)
     })
 
-    it('persists token and user to localStorage', () => {
+    it('does not write to localStorage (persistence is handled by authListener)', () => {
       authReducer(emptyState, setCredentials({ token: 'tok', user: mockUser }))
-      expect(localStorage.getItem('idlr_token')).toBe('tok')
-      expect(JSON.parse(localStorage.getItem('idlr_user') ?? '')).toEqual(mockUser)
+      expect(localStorage.getItem('idlr_token')).toBeNull()
+      expect(localStorage.getItem('idlr_user')).toBeNull()
     })
   })
 
@@ -72,12 +72,13 @@ describe('authSlice', () => {
       expect(state.user).toBeNull()
     })
 
-    it('removes token and user from localStorage', () => {
+    it('does not touch localStorage (persistence is handled by authListener)', () => {
       localStorage.setItem('idlr_token', 'tok')
       localStorage.setItem('idlr_user', JSON.stringify(mockUser))
       authReducer({ token: 'tok', user: mockUser, loading: false }, logout())
-      expect(localStorage.getItem('idlr_token')).toBeNull()
-      expect(localStorage.getItem('idlr_user')).toBeNull()
+      // Reducer is pure — storage is unchanged; listener handles removal
+      expect(localStorage.getItem('idlr_token')).toBe('tok')
+      expect(localStorage.getItem('idlr_user')).toBe(JSON.stringify(mockUser))
     })
   })
 })

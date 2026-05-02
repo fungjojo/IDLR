@@ -8,7 +8,8 @@ const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://localhost:27017/idlr'
 const ADMIN = {
   name: 'Jojo',
   email: 'admin@idlr.com',
-  password: 'admin123',
+  // password is read from env so it never lives in source control in production
+  password: process.env.SEED_ADMIN_PASSWORD ?? 'admin123',
   role: 'admin' as const,
   maxHR: 190,
 }
@@ -24,7 +25,8 @@ async function seed() {
   }
 
   const passwordHash = await bcrypt.hash(ADMIN.password, 10)
-  await User.create({ ...ADMIN, passwordHash })
+  const { password, ...adminData } = ADMIN
+  await User.create({ ...adminData, passwordHash })
 
   console.log('Admin created:')
   console.log('  Email:   ', ADMIN.email)
