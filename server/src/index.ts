@@ -2,6 +2,12 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
+import authRoutes from './routes/auth'
+
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set')
+  process.exit(1)
+}
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -14,6 +20,8 @@ app.use(express.urlencoded({ extended: true }))
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+app.use('/api/auth', authRoutes)
 
 const start = async () => {
   try {

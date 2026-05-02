@@ -1,12 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import type { BaseUser } from '../types/user'
 
-interface AuthUser {
-  id: string
-  name: string
-  email: string
-  role: 'admin' | 'member'
-  maxHR: number
-}
+type AuthUser = BaseUser
 
 interface AuthState {
   token: string | null
@@ -26,15 +21,17 @@ function loadUser(): AuthUser | null {
   }
 }
 
-const initialState: AuthState = {
-  token: localStorage.getItem(TOKEN_KEY),
-  user: loadUser(),
-  loading: false,
+function buildInitialState(): AuthState {
+  return {
+    token: localStorage.getItem(TOKEN_KEY),
+    user: loadUser(),
+    loading: false,
+  }
 }
 
 const authSlice = createSlice({
   name: 'auth',
-  initialState,
+  initialState: buildInitialState,
   reducers: {
     setCredentials(state, action: PayloadAction<{ token: string; user: AuthUser }>) {
       state.token = action.payload.token
