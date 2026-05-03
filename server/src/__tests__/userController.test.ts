@@ -54,7 +54,7 @@ describe('getUsers', () => {
     await getUsers(adminReq(), res)
     expect(User.find).toHaveBeenCalledWith(
       {},
-      { passwordHash: 0, stravaAccessToken: 0, stravaRefreshToken: 0 },
+      { passwordHash: 0, stravaAccessToken: 0, stravaRefreshToken: 0, stravaAthleteId: 0 },
     )
     expect(res.json).toHaveBeenCalledWith({
       users: [
@@ -75,6 +75,14 @@ describe('getUsers', () => {
 
 describe('deleteUser', () => {
   beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 when req.user is missing', async () => {
+    const req = { params: { id: 'user-id-2' }, body: {} } as unknown as AuthRequest
+    const res = mockRes()
+    await deleteUser(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Unauthorised' })
+  })
 
   it('returns 400 for invalid ObjectId', async () => {
     ;(mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(false)
