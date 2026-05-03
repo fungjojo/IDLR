@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
 import authRoutes from './routes/auth'
+import userRoutes from './routes/users'
 
 if (!process.env.JWT_SECRET) {
   console.error('FATAL: JWT_SECRET environment variable is not set')
@@ -22,6 +23,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/auth', authRoutes)
+app.use('/api/users', userRoutes)
 
 const start = async () => {
   try {
