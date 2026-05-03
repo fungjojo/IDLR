@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAppSelector } from './store/hooks'
 import { ROUTES } from './constants/routes'
 import Login from './screens/Login'
 import Dashboard from './screens/Dashboard'
@@ -9,20 +8,8 @@ import ZoneAnalysis from './screens/ZoneAnalysis'
 import VideoAnalysis from './screens/VideoAnalysis'
 import Profile from './screens/Profile'
 import Admin from './screens/Admin'
-
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { token, loading } = useAppSelector((state) => state.auth)
-  if (loading) return null
-  return token ? <>{children}</> : <Navigate to={ROUTES.LOGIN} replace />
-}
-
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { token, user, loading } = useAppSelector((state) => state.auth)
-  if (loading) return null
-  if (!token) return <Navigate to={ROUTES.LOGIN} replace />
-  if (user?.role !== 'admin') return <Navigate to={ROUTES.DASHBOARD} replace />
-  return <>{children}</>
-}
+import PrivateRoute from './components/PrivateRoute'
+import AdminRoute from './components/AdminRoute'
 
 export default function App() {
   return (

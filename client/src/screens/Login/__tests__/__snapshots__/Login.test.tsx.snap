@@ -1,0 +1,51 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Login renders the login form 1`] = `
+<div>
+  <div>
+    <div>
+      <h1>
+        IDLR
+      </h1>
+      <p>
+        Sign in to your account
+      </p>
+      <form>
+        <div>
+          <label
+            for="email"
+          >
+            Email
+          </label>
+          <input
+            autocomplete="email"
+            id="email"
+            required=""
+            type="email"
+            value=""
+          />
+        </div>
+        <div>
+          <label
+            for="password"
+          >
+            Password
+          </label>
+          <input
+            autocomplete="current-password"
+            id="password"
+            required=""
+            type="password"
+            value=""
+          />
+        </div>
+        <button
+          type="submit"
+        >
+          Sign in
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+`;
