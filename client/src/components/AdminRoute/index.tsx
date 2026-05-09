@@ -8,8 +8,8 @@ interface Props {
 }
 
 export default function AdminRoute({ children }: Props) {
-  const { token, user } = useAppSelector((state) => state.auth)
-  if (!token) return <Navigate to={ROUTES.LOGIN} replace />
-  if (user?.role !== 'admin') return <Navigate to={ROUTES.DASHBOARD} replace />
+  const user = useAppSelector((state) => state.auth.user)
+  if (!user) return <Navigate to={ROUTES.LOGIN} replace />
+  if (user.role !== 'admin') return <Navigate to={ROUTES.DASHBOARD} replace />
   return <>{children}</>
 }

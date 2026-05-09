@@ -22,17 +22,17 @@ const memberUser: BaseUser = {
   maxHR: 180,
 }
 
-function makeStore(token: string | null, user: BaseUser | null) {
+function makeStore(user: BaseUser | null) {
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {
-      auth: { token, user, loading: false },
+      auth: { user, loading: false },
     },
   })
 }
 
-function renderWithRoutes(token: string | null, user: BaseUser | null, initialPath = '/admin') {
-  const store = makeStore(token, user)
+function renderWithRoutes(user: BaseUser | null, initialPath = '/admin') {
+  const store = makeStore(user)
   const { container } = render(
     <Provider store={store}>
       <MemoryRouter initialEntries={[initialPath]}>
@@ -56,34 +56,34 @@ function renderWithRoutes(token: string | null, user: BaseUser | null, initialPa
 
 describe('AdminRoute', () => {
   it('renders children when user is admin', () => {
-    renderWithRoutes('valid-token', adminUser)
+    renderWithRoutes(adminUser)
     expect(screen.getByText('Admin content')).toBeInTheDocument()
   })
 
   it('redirects to /dashboard when user is a member', () => {
-    renderWithRoutes('valid-token', memberUser)
+    renderWithRoutes(memberUser)
     expect(screen.getByText('Dashboard page')).toBeInTheDocument()
     expect(screen.queryByText('Admin content')).not.toBeInTheDocument()
   })
 
   it('redirects to /login when not authenticated', () => {
-    renderWithRoutes(null, null)
+    renderWithRoutes(null)
     expect(screen.getByText('Login page')).toBeInTheDocument()
     expect(screen.queryByText('Admin content')).not.toBeInTheDocument()
   })
 
   it('matches snapshot when user is admin', () => {
-    const { container } = renderWithRoutes('valid-token', adminUser)
+    const { container } = renderWithRoutes(adminUser)
     expect(container).toMatchSnapshot()
   })
 
   it('matches snapshot when user is a member', () => {
-    const { container } = renderWithRoutes('valid-token', memberUser)
+    const { container } = renderWithRoutes(memberUser)
     expect(container).toMatchSnapshot()
   })
 
   it('matches snapshot when not authenticated', () => {
-    const { container } = renderWithRoutes(null, null)
+    const { container } = renderWithRoutes(null)
     expect(container).toMatchSnapshot()
   })
 })
