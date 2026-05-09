@@ -1,6 +1,7 @@
 import request from 'supertest'
 import jwt from 'jsonwebtoken'
 import app from '../app'
+import { User } from '../models/User'
 
 jest.mock('../models/User')
 jest.mock('../models/RefreshToken')
@@ -27,6 +28,11 @@ function adminCookie(): string {
 
 beforeAll(() => {
   process.env.JWT_SECRET = JWT_SECRET
+  // adminOnly now does a DB lookup for JWT-admin users; confirm admin role in DB
+  ;(User.findById as jest.Mock).mockReturnValue({
+    select: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockResolvedValue({ role: 'admin' }),
+  })
 })
 
 afterAll(() => {
