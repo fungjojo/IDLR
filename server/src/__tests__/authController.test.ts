@@ -11,6 +11,19 @@ jest.mock('../models/RefreshToken')
 jest.mock('bcryptjs')
 jest.mock('jsonwebtoken')
 
+const JWT_SECRET = 'test-secret-at-least-32-characters-long'
+const REFRESH_SECRET = 'test-refresh-secret-at-least-32-chars'
+
+beforeAll(() => {
+  process.env.JWT_SECRET = JWT_SECRET
+  process.env.REFRESH_TOKEN_SECRET = REFRESH_SECRET
+})
+
+afterAll(() => {
+  delete process.env.JWT_SECRET
+  delete process.env.REFRESH_TOKEN_SECRET
+})
+
 const mockUser = {
   _id: { toString: () => 'user-id-1' },
   name: 'Test User',
@@ -151,6 +164,7 @@ describe('refresh', () => {
 
   it('returns 401 when token is not found in DB', async () => {
     ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue(null)
     ;(RefreshToken.findOne as jest.Mock).mockResolvedValue(null)
     const req = { cookies: { idlr_refresh: 'valid-token' } } as unknown as Request
     const res = mockRes()
@@ -159,19 +173,29 @@ describe('refresh', () => {
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid or revoked token' })
   })
 
-  it('returns 401 when token is revoked', async () => {
+  it('returns 401 when token is revoked and revokes all user sessions', async () => {
     ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
-    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({ jti: 'some-jti', revokedAt: new Date() })
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue(null)
+    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({
+      jti: 'some-jti',
+      revokedAt: new Date(),
+      userId: 'user-id-1',
+    })
+    ;(RefreshToken.updateMany as jest.Mock).mockResolvedValue({})
     const req = { cookies: { idlr_refresh: 'revoked-token' } } as unknown as Request
     const res = mockRes()
     await refresh(req, res)
+    expect(RefreshToken.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ revokedAt: { $exists: false } }),
+      expect.objectContaining({ revokedAt: expect.any(Date) }),
+    )
     expect(res.status).toHaveBeenCalledWith(401)
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid or revoked token' })
   })
 
   it('returns 401 when user no longer exists', async () => {
     ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
-    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({ jti: 'some-jti', revokedAt: undefined })
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({ jti: 'some-jti' })
     ;(User.findById as jest.Mock).mockResolvedValue(null)
     const req = { cookies: { idlr_refresh: 'valid-token' } } as unknown as Request
     const res = mockRes()
@@ -181,15 +205,17 @@ describe('refresh', () => {
 
   it('rotates tokens and sets new cookies on valid refresh', async () => {
     ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'old-jti' })
-    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({ jti: 'old-jti', revokedAt: undefined })
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({ jti: 'old-jti' })
     ;(User.findById as jest.Mock).mockResolvedValue(mockUser)
-    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({})
     ;(jwt.sign as jest.Mock).mockReturnValue('new-token')
     ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
     const req = { cookies: { idlr_refresh: 'valid-token' } } as unknown as Request
     const res = mockRes()
     await refresh(req, res)
-    expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith({ jti: 'old-jti' }, { revokedAt: expect.any(Date) })
+    expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ jti: 'old-jti', revokedAt: { $exists: false } }),
+      expect.objectContaining({ revokedAt: expect.any(Date) }),
+    )
     expect(res.cookie).toHaveBeenCalledWith('idlr_token', 'new-token', expect.objectContaining({ httpOnly: true }))
     expect(res.cookie).toHaveBeenCalledWith('idlr_refresh', 'new-token', expect.objectContaining({ httpOnly: true }))
     expect(res.json).toHaveBeenCalledWith({ message: 'Token refreshed' })

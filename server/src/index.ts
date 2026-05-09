@@ -12,6 +12,11 @@ if (!process.env.REFRESH_TOKEN_SECRET || process.env.REFRESH_TOKEN_SECRET.length
   process.exit(1)
 }
 
+if (process.env.REFRESH_TOKEN_SECRET === process.env.JWT_SECRET) {
+  console.error('FATAL: REFRESH_TOKEN_SECRET must differ from JWT_SECRET')
+  process.exit(1)
+}
+
 if (!process.env.ENCRYPTION_KEY || !/^[0-9a-fA-F]{64}$/.test(process.env.ENCRYPTION_KEY)) {
   console.warn('WARNING: ENCRYPTION_KEY not set or invalid — Strava OAuth tokens will not be encrypted at rest')
 }

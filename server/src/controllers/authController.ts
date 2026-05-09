@@ -143,8 +143,21 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 
     const { id: userId, jti } = raw as { id: string; jti: string }
 
-    const stored = await RefreshToken.findOne({ jti })
-    if (!stored || stored.revokedAt) {
+    // Atomic revoke: only succeeds if the token exists and hasn't been revoked yet
+    const stored = await RefreshToken.findOneAndUpdate(
+      { jti, revokedAt: { $exists: false } },
+      { revokedAt: new Date() },
+    )
+    if (!stored) {
+      // Could be already-revoked (token reuse attack) or never existed
+      const existing = await RefreshToken.findOne({ jti })
+      if (existing?.revokedAt) {
+        // Revoked token reused — possible theft, invalidate all sessions for this user
+        await RefreshToken.updateMany(
+          { userId: existing.userId, revokedAt: { $exists: false } },
+          { revokedAt: new Date() },
+        )
+      }
       res.status(401).json({ message: 'Invalid or revoked token' })
       return
     }
@@ -154,8 +167,6 @@ export async function refresh(req: Request, res: Response): Promise<void> {
       res.status(401).json({ message: 'Invalid token' })
       return
     }
-
-    await RefreshToken.findOneAndUpdate({ jti }, { revokedAt: new Date() })
 
     const { accessToken, refreshToken: newRefreshToken, refreshJti: newJti } = issueTokenPair(user._id.toString(), user.role)
     await RefreshToken.create({

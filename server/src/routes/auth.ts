@@ -30,9 +30,17 @@ const refreshRateLimiter = rateLimit({
   message: { message: 'Too many refresh attempts, please try again later' },
 })
 
+const logoutRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many logout attempts, please try again later' },
+})
+
 router.post('/login', loginRateLimiter, login)
 router.post('/refresh', refreshRateLimiter, refresh)
-router.post('/logout', logout)
+router.post('/logout', logoutRateLimiter, logout)
 router.post('/register', registerRateLimiter, requireAuth, adminOnly, register)
 
 export default router
