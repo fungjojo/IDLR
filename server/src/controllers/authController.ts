@@ -317,3 +317,37 @@ export async function me(req: AuthRequest, res: Response): Promise<void> {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
+export async function getSessions(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const sessions = await RefreshToken.find(
+      { userId: req.user!.id, revokedAt: { $exists: false }, expiresAt: { $gt: new Date() } },
+      { jti: 1, createdAt: 1, expiresAt: 1 },
+    ).sort({ createdAt: -1 })
+    res.json({
+      sessions: sessions.map((s) => ({ jti: s.jti, createdAt: s.createdAt, expiresAt: s.expiresAt })),
+    })
+  } catch (err) {
+    logger.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export async function revokeSession(req: AuthRequest, res: Response): Promise<void> {
+  const { jti } = req.params
+  try {
+    const result = await RefreshToken.findOneAndUpdate(
+      { jti, userId: req.user!.id, revokedAt: { $exists: false } },
+      { revokedAt: new Date() },
+    )
+    if (!result) {
+      res.status(404).json({ message: 'Session not found' })
+      return
+    }
+    logger.info({ event: 'auth.session.revoked', userId: req.user!.id, jti }, 'Session revoked')
+    res.json({ message: 'Session revoked' })
+  } catch (err) {
+    logger.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
