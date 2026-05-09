@@ -87,6 +87,40 @@ describe('login', () => {
     })
   })
 
+  it('sets secure:true and sameSite:strict in production', async () => {
+    const original = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+    ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
+    const res = mockRes()
+    await login(req, res)
+    expect(res.cookie).toHaveBeenCalledWith(
+      'idlr_token',
+      'test-token',
+      expect.objectContaining({ secure: true, sameSite: 'strict' }),
+    )
+    process.env.NODE_ENV = original
+  })
+
+  it('sets secure:false and sameSite:lax in development', async () => {
+    const original = process.env.NODE_ENV
+    process.env.NODE_ENV = 'development'
+    ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+    ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
+    const res = mockRes()
+    await login(req, res)
+    expect(res.cookie).toHaveBeenCalledWith(
+      'idlr_token',
+      'test-token',
+      expect.objectContaining({ secure: false, sameSite: 'lax' }),
+    )
+    process.env.NODE_ENV = original
+  })
+
   it('returns 500 on unexpected error', async () => {
     ;(User.findOne as jest.Mock).mockRejectedValue(new Error('DB error'))
     const req = { body: { email: 'a@b.com', password: 'pw' } } as Request
@@ -97,11 +131,14 @@ describe('login', () => {
 })
 
 describe('logout', () => {
-  it('clears the auth cookie and returns confirmation', () => {
+  it('clears the auth cookie with full options and returns confirmation', () => {
     const req = {} as Request
     const res = mockRes()
     logout(req, res)
-    expect(res.clearCookie).toHaveBeenCalledWith('idlr_token', { path: '/' })
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      'idlr_token',
+      expect.objectContaining({ httpOnly: true, path: '/' }),
+    )
     expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' })
   })
 })

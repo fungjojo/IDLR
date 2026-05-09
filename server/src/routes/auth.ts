@@ -24,6 +24,6 @@ const registerRateLimiter = rateLimit({
 
 router.post('/login', loginRateLimiter, login)
 router.post('/logout', logout)
-router.post('/register', requireAuth, adminOnly, registerRateLimiter, register)
+router.post('/register', registerRateLimiter, requireAuth, adminOnly, register)
 
 export default router

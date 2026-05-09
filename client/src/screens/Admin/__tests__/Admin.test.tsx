@@ -20,7 +20,6 @@ const mockMembers: usersService.Member[] = [
 
 function renderAdmin(currentUserId = 'user-id-1') {
   const preloadedAuth = {
-    token: 'test-token',
     user: { id: currentUserId, name: 'Alice', email: 'alice@example.com', role: 'admin' as const, maxHR: 185 },
     loading: false,
   }

@@ -1,4 +1,4 @@
-import { type Request, type Response } from 'express'
+import { type Request, type Response, type CookieOptions } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
@@ -12,12 +12,12 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const COOKIE_NAME = 'idlr_token'
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
-function cookieOptions() {
+function cookieOptions(): CookieOptions {
   const isProd = process.env.NODE_ENV === 'production'
   return {
     httpOnly: true,
     secure: isProd,
-    sameSite: (isProd ? 'strict' : 'lax') as 'strict' | 'lax',
+    sameSite: isProd ? 'strict' : 'lax',
     maxAge: COOKIE_MAX_AGE_MS,
     path: '/',
   }
@@ -79,7 +79,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 export function logout(_req: Request, res: Response): void {
-  res.clearCookie(COOKIE_NAME, { path: '/' })
+  res.clearCookie(COOKIE_NAME, cookieOptions())
   res.json({ message: 'Logged out' })
 }
 

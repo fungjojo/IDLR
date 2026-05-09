@@ -32,6 +32,11 @@ describe('crypto utils', () => {
     expect(() => encrypt('anything')).toThrow('ENCRYPTION_KEY')
   })
 
+  it('throws when ENCRYPTION_KEY contains non-hex characters', () => {
+    process.env.ENCRYPTION_KEY = 'g'.repeat(64)
+    expect(() => encrypt('anything')).toThrow('ENCRYPTION_KEY')
+  })
+
   it('throws on tampered ciphertext', () => {
     const ciphertext = encrypt('hello')
     const tampered = ciphertext.slice(0, -4) + 'ffff'

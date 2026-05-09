@@ -7,7 +7,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   process.exit(1)
 }
 
-if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length !== 64) {
+if (!process.env.ENCRYPTION_KEY || !/^[0-9a-fA-F]{64}$/.test(process.env.ENCRYPTION_KEY)) {
   console.warn('WARNING: ENCRYPTION_KEY not set or invalid — Strava OAuth tokens will not be encrypted at rest')
 }
 
