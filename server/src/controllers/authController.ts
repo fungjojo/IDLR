@@ -10,6 +10,8 @@ const BCRYPT_ROUNDS = 12
 const MAX_PASSWORD_LENGTH = 72
 const MIN_PASSWORD_LENGTH = 8
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_LOGIN_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000
 
 const ACCESS_EXPIRES = '15m'
 const REFRESH_EXPIRES = '7d'
@@ -85,10 +87,25 @@ export async function login(req: Request, res: Response): Promise<void> {
       return
     }
 
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      res.status(423).json({ message: 'Account temporarily locked. Try again later.' })
+      return
+    }
+
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
+      const attempts = (user.loginAttempts ?? 0) + 1
+      const update: { loginAttempts: number; lockedUntil?: Date } = { loginAttempts: attempts }
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        update.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS)
+      }
+      await User.updateOne({ _id: user._id }, update)
       res.status(401).json({ message: 'Invalid credentials' })
       return
+    }
+
+    if (user.loginAttempts > 0 || user.lockedUntil) {
+      await User.updateOne({ _id: user._id }, { loginAttempts: 0, lockedUntil: null })
     }
 
     const userId = user._id.toString()

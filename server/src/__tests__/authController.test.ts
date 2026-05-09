@@ -72,11 +72,59 @@ describe('login', () => {
   it('returns 401 when password is wrong', async () => {
     ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
     ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
+    ;(User.updateOne as jest.Mock).mockResolvedValue({})
     const req = { body: { email: 'test@example.com', password: 'wrong' } } as Request
     const res = mockRes()
     await login(req, res)
     expect(res.status).toHaveBeenCalledWith(401)
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid credentials' })
+  })
+
+  it('returns 423 when account is locked', async () => {
+    const lockedUser = { ...mockUser, lockedUntil: new Date(Date.now() + 60_000) }
+    ;(User.findOne as jest.Mock).mockResolvedValue(lockedUser)
+    const req = { body: { email: 'test@example.com', password: 'any' } } as Request
+    const res = mockRes()
+    await login(req, res)
+    expect(res.status).toHaveBeenCalledWith(423)
+  })
+
+  it('increments loginAttempts on failed password', async () => {
+    ;(User.findOne as jest.Mock).mockResolvedValue({ ...mockUser, loginAttempts: 2 })
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
+    ;(User.updateOne as jest.Mock).mockResolvedValue({})
+    const req = { body: { email: 'test@example.com', password: 'wrong' } } as Request
+    await login(req, mockRes())
+    expect(User.updateOne).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ loginAttempts: 3 }),
+    )
+  })
+
+  it('sets lockedUntil after MAX_LOGIN_ATTEMPTS failures', async () => {
+    ;(User.findOne as jest.Mock).mockResolvedValue({ ...mockUser, loginAttempts: 4 })
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
+    ;(User.updateOne as jest.Mock).mockResolvedValue({})
+    const req = { body: { email: 'test@example.com', password: 'wrong' } } as Request
+    await login(req, mockRes())
+    expect(User.updateOne).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ loginAttempts: 5, lockedUntil: expect.any(Date) }),
+    )
+  })
+
+  it('resets loginAttempts on successful login', async () => {
+    ;(User.findOne as jest.Mock).mockResolvedValue({ ...mockUser, loginAttempts: 3 })
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+    ;(User.updateOne as jest.Mock).mockResolvedValue({})
+    ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
+    const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
+    await login(req, mockRes())
+    expect(User.updateOne).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ loginAttempts: 0 }),
+    )
   })
 
   it('sets both httpOnly cookies and returns user on valid credentials', async () => {
