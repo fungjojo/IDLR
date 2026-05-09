@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { login, logout, me, refresh, register } from '../controllers/authController'
+import { getSessions, login, logout, me, refresh, register, revokeSession } from '../controllers/authController'
 import { User } from '../models/User'
 import { RefreshToken } from '../models/RefreshToken'
 import type { AuthRequest } from '../middleware/auth'
@@ -409,5 +409,71 @@ describe('me', () => {
     const res = mockRes()
     await me(req, res)
     expect(res.status).toHaveBeenCalledWith(500)
+  })
+})
+
+describe('getSessions', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  const userReq = { user: { id: 'user-id-1', role: 'member' as const } } as AuthRequest
+
+  it('returns active sessions for the current user', async () => {
+    const now = new Date()
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const mockSessions = [
+      { jti: 'jti-1', createdAt: now, expiresAt: expires },
+      { jti: 'jti-2', createdAt: now, expiresAt: expires },
+    ]
+    const sortMock = jest.fn().mockResolvedValue(mockSessions)
+    ;(RefreshToken.find as jest.Mock).mockReturnValue({ sort: sortMock })
+    const res = mockRes()
+    await getSessions(userReq, res)
+    expect(RefreshToken.find).toHaveBeenCalledWith(
+      { userId: 'user-id-1', revokedAt: { $exists: false }, expiresAt: { $gt: expect.any(Date) } },
+      { jti: 1, createdAt: 1, expiresAt: 1 },
+    )
+    expect(res.json).toHaveBeenCalledWith({ sessions: mockSessions.map((s) => ({ jti: s.jti, createdAt: s.createdAt, expiresAt: s.expiresAt })) })
+  })
+
+  it('returns 500 on DB error', async () => {
+    ;(RefreshToken.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockRejectedValue(new Error('DB error')) })
+    const res = mockRes()
+    await getSessions(userReq, res)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Server error' })
+  })
+})
+
+describe('revokeSession', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  const userReq = (jti: string) =>
+    ({ user: { id: 'user-id-1', role: 'member' as const }, params: { jti } }) as unknown as AuthRequest
+
+  it('returns 404 when session not found or belongs to another user', async () => {
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue(null)
+    const res = mockRes()
+    await revokeSession(userReq('unknown-jti'), res)
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Session not found' })
+  })
+
+  it('revokes session and returns success', async () => {
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({ jti: 'jti-1' })
+    const res = mockRes()
+    await revokeSession(userReq('jti-1'), res)
+    expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith(
+      { jti: 'jti-1', userId: 'user-id-1', revokedAt: { $exists: false } },
+      { revokedAt: expect.any(Date) },
+    )
+    expect(res.json).toHaveBeenCalledWith({ message: 'Session revoked' })
+  })
+
+  it('returns 500 on DB error', async () => {
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockRejectedValue(new Error('DB error'))
+    const res = mockRes()
+    await revokeSession(userReq('jti-1'), res)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Server error' })
   })
 })
