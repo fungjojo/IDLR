@@ -3,27 +3,28 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from '../../../store/authSlice'
+import { type BaseUser } from '../../../types/user'
 import PrivateRoute from '../index'
 
-const mockUser = {
+const mockUser: BaseUser = {
   id: '1',
   name: 'Jojo',
   email: 'jojo@test.com',
-  role: 'admin' as const,
+  role: 'admin',
   maxHR: 185,
 }
 
-function makeStore(token: string | null, user = mockUser) {
+function makeStore(user: BaseUser | null) {
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {
-      auth: { token, user: token ? user : null, loading: false },
+      auth: { user, loading: false },
     },
   })
 }
 
-function renderWithRoute(token: string | null, initialPath = '/protected') {
-  const store = makeStore(token)
+function renderWithRoute(user: BaseUser | null, initialPath = '/protected') {
+  const store = makeStore(user)
   const { container } = render(
     <Provider store={store}>
       <MemoryRouter initialEntries={[initialPath]}>
@@ -46,7 +47,7 @@ function renderWithRoute(token: string | null, initialPath = '/protected') {
 
 describe('PrivateRoute', () => {
   it('renders children when authenticated', () => {
-    renderWithRoute('valid-token')
+    renderWithRoute(mockUser)
     expect(screen.getByText('Protected content')).toBeInTheDocument()
   })
 
@@ -57,7 +58,7 @@ describe('PrivateRoute', () => {
   })
 
   it('matches snapshot when authenticated', () => {
-    const { container } = renderWithRoute('valid-token')
+    const { container } = renderWithRoute(mockUser)
     expect(container).toMatchSnapshot()
   })
 

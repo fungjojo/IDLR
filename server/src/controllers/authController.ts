@@ -1,12 +1,27 @@
-import { type Request, type Response } from 'express'
+import { type Request, type Response, type CookieOptions } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
 import { type AuthRequest } from '../middleware/auth'
 
 const JWT_EXPIRES = '7d'
+const BCRYPT_ROUNDS = 12
 const MAX_PASSWORD_LENGTH = 72
+const MIN_PASSWORD_LENGTH = 8
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const COOKIE_NAME = 'idlr_token'
+const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+function cookieOptions(): CookieOptions {
+  const isProd = process.env.NODE_ENV === 'production'
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'strict' : 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
+  }
+}
 
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body as { email?: string; password?: string }
@@ -44,11 +59,11 @@ export async function login(req: Request, res: Response): Promise<void> {
     const token = jwt.sign(
       { id: user._id.toString(), role: user.role },
       process.env.JWT_SECRET as string,
-      { expiresIn: JWT_EXPIRES },
+      { expiresIn: JWT_EXPIRES, algorithm: 'HS256' },
     )
 
+    res.cookie(COOKIE_NAME, token, cookieOptions())
     res.json({
-      token,
       user: {
         id: user._id.toString(),
         name: user.name,
@@ -61,6 +76,11 @@ export async function login(req: Request, res: Response): Promise<void> {
     console.error(err)
     res.status(500).json({ message: 'Server error' })
   }
+}
+
+export function logout(_req: Request, res: Response): void {
+  res.clearCookie(COOKIE_NAME, cookieOptions())
+  res.json({ message: 'Logged out' })
 }
 
 export async function register(req: AuthRequest, res: Response): Promise<void> {
@@ -81,6 +101,11 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
     return
   }
 
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    res.status(400).json({ message: 'Password must be at least 8 characters' })
+    return
+  }
+
   const normalisedEmail = email.trim().toLowerCase()
 
   if (!EMAIL_REGEX.test(normalisedEmail)) {
@@ -95,7 +120,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
       return
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
     const user = await User.create({ name, email: normalisedEmail, passwordHash, role: 'member', maxHR })
 
     res.status(201).json({

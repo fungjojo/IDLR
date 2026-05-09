@@ -4,14 +4,16 @@ import app from '../app'
 
 jest.mock('../models/User')
 
-const JWT_SECRET = 'test-secret'
+const JWT_SECRET = 'test-secret-at-least-32-characters-long'
 
-function memberToken(): string {
-  return jwt.sign({ id: 'member-id-1', role: 'member' }, JWT_SECRET)
+function memberCookie(): string {
+  const token = jwt.sign({ id: 'member-id-1', role: 'member' }, JWT_SECRET, { algorithm: 'HS256' })
+  return `idlr_token=${token}`
 }
 
-function adminToken(): string {
-  return jwt.sign({ id: 'admin-id-1', role: 'admin' }, JWT_SECRET)
+function adminCookie(): string {
+  const token = jwt.sign({ id: 'admin-id-1', role: 'admin' }, JWT_SECRET, { algorithm: 'HS256' })
+  return `idlr_token=${token}`
 }
 
 beforeAll(() => {
@@ -23,10 +25,10 @@ afterAll(() => {
 })
 
 describe('GET /api/users', () => {
-  it('returns 403 when called with a member JWT', async () => {
+  it('returns 403 when called with a member cookie', async () => {
     const res = await request(app)
       .get('/api/users')
-      .set('Authorization', `Bearer ${memberToken()}`)
+      .set('Cookie', memberCookie())
     expect(res.status).toBe(403)
     expect(res.body).toMatchObject({ message: 'Admin access required' })
   })
@@ -38,10 +40,10 @@ describe('GET /api/users', () => {
 })
 
 describe('DELETE /api/users/:id', () => {
-  it('returns 403 when called with a member JWT', async () => {
+  it('returns 403 when called with a member cookie', async () => {
     const res = await request(app)
       .delete('/api/users/507f1f77bcf86cd799439011')
-      .set('Authorization', `Bearer ${memberToken()}`)
+      .set('Cookie', memberCookie())
     expect(res.status).toBe(403)
     expect(res.body).toMatchObject({ message: 'Admin access required' })
   })
@@ -52,10 +54,10 @@ describe('DELETE /api/users/:id', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 400 for an invalid ObjectId when called with an admin JWT', async () => {
+  it('returns 400 for an invalid ObjectId when called with an admin cookie', async () => {
     const res = await request(app)
       .delete('/api/users/not-a-valid-id')
-      .set('Authorization', `Bearer ${adminToken()}`)
+      .set('Cookie', adminCookie())
     expect(res.status).toBe(400)
     expect(res.body).toMatchObject({ message: 'Invalid user ID' })
   })

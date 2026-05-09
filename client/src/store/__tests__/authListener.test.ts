@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import authReducer, { setCredentials, logout, TOKEN_KEY, USER_KEY } from '../authSlice'
+import authReducer, { setCredentials, logout, USER_KEY } from '../authSlice'
 import authListenerMiddleware from '../authListener'
 
 const mockUser = {
@@ -24,27 +24,14 @@ beforeEach(() => {
 
 describe('authListenerMiddleware', () => {
   describe('setCredentials', () => {
-    it('persists token to localStorage', () => {
-      const store = makeStore()
-      store.dispatch(setCredentials({ token: 'tok123', user: mockUser }))
-      expect(localStorage.getItem(TOKEN_KEY)).toBe('tok123')
-    })
-
     it('persists user to localStorage as JSON', () => {
       const store = makeStore()
-      store.dispatch(setCredentials({ token: 'tok123', user: mockUser }))
+      store.dispatch(setCredentials({ user: mockUser }))
       expect(JSON.parse(localStorage.getItem(USER_KEY) ?? '')).toEqual(mockUser)
     })
   })
 
   describe('logout', () => {
-    it('removes token from localStorage', () => {
-      localStorage.setItem(TOKEN_KEY, 'tok123')
-      const store = makeStore()
-      store.dispatch(logout())
-      expect(localStorage.getItem(TOKEN_KEY)).toBeNull()
-    })
-
     it('removes user from localStorage', () => {
       localStorage.setItem(USER_KEY, JSON.stringify(mockUser))
       const store = makeStore()

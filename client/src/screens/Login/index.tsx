@@ -8,7 +8,6 @@ import { type BaseUser } from '../../types/user'
 import styles from './Login.module.css'
 
 interface LoginResponse {
-  token: string
   user: BaseUser
 }
 
@@ -28,7 +27,7 @@ export default function Login() {
 
     try {
       const { data } = await api.post<LoginResponse>('/api/auth/login', { email, password })
-      dispatch(setCredentials(data))
+      dispatch(setCredentials({ user: data.user }))
       navigate(ROUTES.DASHBOARD, { replace: true })
     } catch {
       setError('Invalid email or password')

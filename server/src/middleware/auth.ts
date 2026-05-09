@@ -9,14 +9,13 @@ export interface AuthRequest extends Request {
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction): void {
-  const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
+  const token = req.cookies?.idlr_token as string | undefined
+  if (!token) {
     res.status(401).json({ message: 'Unauthorised' })
     return
   }
-  const token = header.slice(7)
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET as string) as unknown
+    const payload = jwt.verify(token, process.env.JWT_SECRET as string, { algorithms: ['HS256'] }) as unknown
     if (
       typeof payload !== 'object' ||
       payload === null ||
