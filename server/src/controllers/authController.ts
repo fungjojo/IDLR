@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
 import { RefreshToken } from '../models/RefreshToken'
 import { type AuthRequest } from '../middleware/auth'
+import { logger } from '../utils/logger'
 
 const BCRYPT_ROUNDS = 12
 const MAX_PASSWORD_LENGTH = 72
@@ -131,7 +132,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -282,7 +283,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -304,7 +305,7 @@ export async function me(req: AuthRequest, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     res.status(500).json({ message: 'Server error' })
   }
 }

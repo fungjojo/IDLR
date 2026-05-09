@@ -10,6 +10,7 @@ jest.mock('../models/User')
 jest.mock('../models/RefreshToken')
 jest.mock('bcryptjs')
 jest.mock('jsonwebtoken')
+jest.mock('../utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
 
 const JWT_SECRET = 'test-secret-at-least-32-characters-long'
 const REFRESH_SECRET = 'test-refresh-secret-at-least-32-chars'

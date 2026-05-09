@@ -2,6 +2,7 @@ import { type Response } from 'express'
 import mongoose from 'mongoose'
 import { User } from '../models/User'
 import { type AuthRequest } from '../middleware/auth'
+import { logger } from '../utils/logger'
 
 export interface UserResponse {
   id: string
@@ -28,7 +29,7 @@ export async function getUsers(_req: AuthRequest, res: Response): Promise<void> 
     }))
     res.json({ users: payload })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -59,7 +60,7 @@ export async function deleteUser(req: AuthRequest, res: Response): Promise<void>
     }
     res.json({ message: 'User deleted' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     res.status(500).json({ message: 'Server error' })
   }
 }
