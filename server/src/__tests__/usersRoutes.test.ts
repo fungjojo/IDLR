@@ -3,16 +3,25 @@ import jwt from 'jsonwebtoken'
 import app from '../app'
 
 jest.mock('../models/User')
+jest.mock('../models/RefreshToken')
 
 const JWT_SECRET = 'test-secret-at-least-32-characters-long'
 
 function memberCookie(): string {
-  const token = jwt.sign({ id: 'member-id-1', role: 'member' }, JWT_SECRET, { algorithm: 'HS256' })
+  const token = jwt.sign(
+    { id: 'member-id-1', role: 'member' },
+    JWT_SECRET,
+    { algorithm: 'HS256', issuer: 'idlr', audience: 'idlr-client' },
+  )
   return `idlr_token=${token}`
 }
 
 function adminCookie(): string {
-  const token = jwt.sign({ id: 'admin-id-1', role: 'admin' }, JWT_SECRET, { algorithm: 'HS256' })
+  const token = jwt.sign(
+    { id: 'admin-id-1', role: 'admin' },
+    JWT_SECRET,
+    { algorithm: 'HS256', issuer: 'idlr', audience: 'idlr-client' },
+  )
   return `idlr_token=${token}`
 }
 

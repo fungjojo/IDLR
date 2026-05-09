@@ -15,7 +15,11 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return
   }
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET as string, { algorithms: ['HS256'] }) as unknown
+    const payload = jwt.verify(token, process.env.JWT_SECRET as string, {
+      algorithms: ['HS256'],
+      issuer: 'idlr',
+      audience: 'idlr-client',
+    }) as unknown
     if (
       typeof payload !== 'object' ||
       payload === null ||
