@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { login, logout, refresh, register } from '../controllers/authController'
+import { login, logout, me, refresh, register } from '../controllers/authController'
 import { User } from '../models/User'
 import { RefreshToken } from '../models/RefreshToken'
 import type { AuthRequest } from '../middleware/auth'
@@ -317,6 +317,48 @@ describe('register', () => {
     } as AuthRequest
     const res = mockRes()
     await register(req, res)
+    expect(res.status).toHaveBeenCalledWith(500)
+  })
+})
+
+describe('me', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns user data for authenticated user', async () => {
+    ;(User.findById as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: { toString: () => 'user-id-1' },
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'member',
+        maxHR: 185,
+      }),
+    })
+    const req = { user: { id: 'user-id-1', role: 'member' as const } } as AuthRequest
+    const res = mockRes()
+    await me(req, res)
+    expect(res.json).toHaveBeenCalledWith({
+      user: { id: 'user-id-1', name: 'Test User', email: 'test@example.com', role: 'member', maxHR: 185 },
+    })
+  })
+
+  it('returns 401 when user not found in DB', async () => {
+    ;(User.findById as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue(null),
+    })
+    const req = { user: { id: 'unknown-id', role: 'member' as const } } as AuthRequest
+    const res = mockRes()
+    await me(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+  })
+
+  it('returns 500 on DB error', async () => {
+    ;(User.findById as jest.Mock).mockReturnValue({
+      select: jest.fn().mockRejectedValue(new Error('DB error')),
+    })
+    const req = { user: { id: 'user-id-1', role: 'member' as const } } as AuthRequest
+    const res = mockRes()
+    await me(req, res)
     expect(res.status).toHaveBeenCalledWith(500)
   })
 })
