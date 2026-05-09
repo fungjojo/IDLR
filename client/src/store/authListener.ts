@@ -1,20 +1,8 @@
 import { createListenerMiddleware } from '@reduxjs/toolkit'
-import { setCredentials, logout, USER_KEY } from './authSlice'
 
+// Auth state is no longer persisted to localStorage. Session is re-hydrated
+// server-side via GET /api/auth/me on app load. This middleware is kept as a
+// registered entry point for future side-effect listeners (e.g. analytics).
 const authListenerMiddleware = createListenerMiddleware()
-
-authListenerMiddleware.startListening({
-  actionCreator: setCredentials,
-  effect(action) {
-    localStorage.setItem(USER_KEY, JSON.stringify(action.payload.user))
-  },
-})
-
-authListenerMiddleware.startListening({
-  actionCreator: logout,
-  effect() {
-    localStorage.removeItem(USER_KEY)
-  },
-})
 
 export default authListenerMiddleware

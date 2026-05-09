@@ -7,6 +7,8 @@ export interface IUser extends Document {
   passwordHash: string
   role: 'admin' | 'member'
   maxHR: number
+  loginAttempts: number
+  lockedUntil?: Date
   stravaAccessToken?: string
   stravaRefreshToken?: string
   stravaAthleteId?: number
@@ -23,6 +25,8 @@ const userSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['admin', 'member'], default: 'member' },
     maxHR: { type: Number, default: 190 },
+    loginAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date },
     stravaAccessToken: String,
     stravaRefreshToken: String,
     stravaAthleteId: Number,

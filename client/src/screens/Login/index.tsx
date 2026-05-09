@@ -29,8 +29,9 @@ export default function Login() {
       const { data } = await api.post<LoginResponse>('/api/auth/login', { email, password })
       dispatch(setCredentials({ user: data.user }))
       navigate(ROUTES.DASHBOARD, { replace: true })
-    } catch {
-      setError('Invalid email or password')
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status
+      setError(status === 423 ? 'Account locked. Please try again later.' : 'Invalid email or password')
       setPassword('')
     } finally {
       setLoading(false)

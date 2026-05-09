@@ -26,7 +26,7 @@ function makeStore(user: BaseUser | null) {
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {
-      auth: { user, loading: false },
+      auth: { user, loading: false, initialized: true },
     },
   })
 }

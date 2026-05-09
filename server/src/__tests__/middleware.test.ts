@@ -2,8 +2,10 @@ import type { Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { adminOnly } from '../middleware/adminOnly'
+import { User } from '../models/User'
 
 jest.mock('jsonwebtoken')
+jest.mock('../models/User')
 
 beforeAll(() => { process.env.JWT_SECRET = 'test-secret-at-least-32-characters-long' })
 afterAll(() => { delete process.env.JWT_SECRET })
@@ -61,30 +63,65 @@ describe('requireAuth', () => {
   })
 })
 
+function mockFindById(role: string | null) {
+  ;(User.findById as jest.Mock).mockReturnValue({
+    select: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockResolvedValue(role !== null ? { role } : null),
+  })
+}
+
 describe('adminOnly', () => {
-  it('returns 403 when req.user is not set', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 403 without DB call when req.user is not set', async () => {
     const req = {} as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
-    adminOnly(req, res, next)
+    await adminOnly(req, res, next)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(User.findById).not.toHaveBeenCalled()
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 without DB call when JWT role is member', async () => {
+    const req = { user: { id: '1', role: 'member' as const } } as AuthRequest
+    const res = mockRes()
+    const next = jest.fn() as NextFunction
+    await adminOnly(req, res, next)
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(User.findById).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 when JWT says admin but DB role is member', async () => {
+    mockFindById('member')
+    const req = { user: { id: '1', role: 'admin' as const } } as AuthRequest
+    const res = mockRes()
+    const next = jest.fn() as NextFunction
+    await adminOnly(req, res, next)
     expect(res.status).toHaveBeenCalledWith(403)
     expect(next).not.toHaveBeenCalled()
   })
 
-  it('returns 403 when role is member', () => {
-    const req = { user: { id: '1', role: 'member' as const } } as AuthRequest
-    const res = mockRes()
-    const next = jest.fn() as NextFunction
-    adminOnly(req, res, next)
-    expect(res.status).toHaveBeenCalledWith(403)
-  })
-
-  it('calls next when role is admin', () => {
+  it('calls next when JWT role is admin and DB confirms', async () => {
+    mockFindById('admin')
     const req = { user: { id: '1', role: 'admin' as const } } as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
-    adminOnly(req, res, next)
+    await adminOnly(req, res, next)
     expect(next).toHaveBeenCalled()
     expect(res.status).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 on DB error', async () => {
+    ;(User.findById as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockRejectedValue(new Error('DB error')),
+    })
+    const req = { user: { id: '1', role: 'admin' as const } } as AuthRequest
+    const res = mockRes()
+    const next = jest.fn() as NextFunction
+    await adminOnly(req, res, next)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(next).not.toHaveBeenCalled()
   })
 })
