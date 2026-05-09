@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { login, register } from '../controllers/authController'
+import { login, logout, register } from '../controllers/authController'
 import { User } from '../models/User'
 import type { AuthRequest } from '../middleware/auth'
 
@@ -22,6 +22,8 @@ function mockRes() {
   const res = {} as Response
   res.status = jest.fn().mockReturnValue(res)
   res.json = jest.fn().mockReturnValue(res)
+  res.cookie = jest.fn().mockReturnValue(res)
+  res.clearCookie = jest.fn().mockReturnValue(res)
   return res
 }
 
@@ -62,15 +64,19 @@ describe('login', () => {
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid credentials' })
   })
 
-  it('returns token and user on valid credentials', async () => {
+  it('sets httpOnly cookie and returns user on valid credentials', async () => {
     ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
     ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
     ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
     const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
     const res = mockRes()
     await login(req, res)
+    expect(res.cookie).toHaveBeenCalledWith(
+      'idlr_token',
+      'test-token',
+      expect.objectContaining({ httpOnly: true }),
+    )
     expect(res.json).toHaveBeenCalledWith({
-      token: 'test-token',
       user: {
         id: 'user-id-1',
         name: 'Test User',
@@ -90,6 +96,16 @@ describe('login', () => {
   })
 })
 
+describe('logout', () => {
+  it('clears the auth cookie and returns confirmation', () => {
+    const req = {} as Request
+    const res = mockRes()
+    logout(req, res)
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_token', { path: '/' })
+    expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' })
+  })
+})
+
 describe('register', () => {
   beforeEach(() => jest.clearAllMocks())
 
@@ -101,10 +117,21 @@ describe('register', () => {
     expect(res.json).toHaveBeenCalledWith({ message: 'Name, email and password required' })
   })
 
+  it('returns 400 when password is shorter than 8 characters', async () => {
+    const req = {
+      body: { name: 'New', email: 'new@example.com', password: 'short' },
+      user: { id: 'admin', role: 'admin' as const },
+    } as AuthRequest
+    const res = mockRes()
+    await register(req, res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Password must be at least 8 characters' })
+  })
+
   it('returns 409 when email is already in use', async () => {
     ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
     const req = {
-      body: { name: 'New', email: 'test@example.com', password: 'pw' },
+      body: { name: 'New', email: 'test@example.com', password: 'validpassword' },
       user: { id: 'admin', role: 'admin' as const },
     } as AuthRequest
     const res = mockRes()
@@ -123,7 +150,7 @@ describe('register', () => {
       email: 'new@example.com',
     })
     const req = {
-      body: { name: 'New User', email: 'new@example.com', password: 'pw' },
+      body: { name: 'New User', email: 'new@example.com', password: 'validpassword' },
       user: { id: 'admin', role: 'admin' as const },
     } as AuthRequest
     const res = mockRes()
@@ -134,7 +161,7 @@ describe('register', () => {
   it('returns 500 on unexpected error', async () => {
     ;(User.findOne as jest.Mock).mockRejectedValue(new Error('DB error'))
     const req = {
-      body: { name: 'A', email: 'a@b.com', password: 'pw' },
+      body: { name: 'A', email: 'a@b.com', password: 'validpassword' },
       user: { id: 'admin', role: 'admin' as const },
     } as AuthRequest
     const res = mockRes()

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { login, register } from '../controllers/authController'
+import { login, logout, register } from '../controllers/authController'
 import { requireAuth } from '../middleware/auth'
 import { adminOnly } from '../middleware/adminOnly'
 
@@ -14,7 +14,16 @@ const loginRateLimiter = rateLimit({
   message: { message: 'Too many login attempts, please try again later' },
 })
 
+const registerRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many registration attempts, please try again later' },
+})
+
 router.post('/login', loginRateLimiter, login)
-router.post('/register', requireAuth, adminOnly, register)
+router.post('/logout', logout)
+router.post('/register', requireAuth, adminOnly, registerRateLimiter, register)
 
 export default router
