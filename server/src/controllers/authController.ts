@@ -90,6 +90,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)
+      logger.warn({ event: 'auth.login.locked', email: normalisedEmail, retryAfter }, 'Login attempt on locked account')
       res.set('Retry-After', String(retryAfter))
       res.status(423).json({ message: 'Account temporarily locked. Try again later.', retryAfter })
       return
@@ -101,8 +102,10 @@ export async function login(req: Request, res: Response): Promise<void> {
       const update: { loginAttempts: number; lockedUntil?: Date } = { loginAttempts: attempts }
       if (attempts >= MAX_LOGIN_ATTEMPTS) {
         update.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS)
+        logger.warn({ event: 'auth.login.lockout_triggered', email: normalisedEmail, attempts }, 'Account locked out')
       }
       await User.updateOne({ _id: user._id }, update)
+      logger.warn({ event: 'auth.login.failure', email: normalisedEmail }, 'Failed login attempt')
       res.status(401).json({ message: 'Invalid credentials' })
       return
     }
@@ -113,6 +116,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     const userId = user._id.toString()
     const { accessToken, refreshToken, refreshJti } = issueTokenPair(userId, user.role)
+    logger.info({ event: 'auth.login.success', userId, role: user.role }, 'User logged in')
 
     await RefreshToken.create({
       jti: refreshJti,
@@ -197,6 +201,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 
     res.cookie(ACCESS_COOKIE, accessToken, accessCookieOptions())
     res.cookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions())
+    logger.info({ event: 'auth.refresh.success', userId }, 'Token refreshed')
     res.json({ message: 'Token refreshed' })
   } catch {
     res.status(401).json({ message: 'Invalid or expired token' })
@@ -218,10 +223,12 @@ export async function logout(req: Request, res: Response): Promise<void> {
         'jti' in raw &&
         typeof (raw as Record<string, unknown>).jti === 'string'
       ) {
+        const { jti, id: userId } = raw as { jti: string; id?: string }
         await RefreshToken.findOneAndUpdate(
-          { jti: (raw as { jti: string }).jti },
+          { jti },
           { revokedAt: new Date() },
         )
+        if (userId) logger.info({ event: 'auth.logout', userId }, 'User logged out')
       }
     } catch {
       // Best-effort revocation — always clear cookies
@@ -272,6 +279,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
     const user = await User.create({ name, email: normalisedEmail, passwordHash, role: 'member', maxHR })
+    logger.info({ event: 'auth.register.success', userId: user._id.toString(), email: normalisedEmail, role: 'member' }, 'User registered')
 
     res.status(201).json({
       user: {

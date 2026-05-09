@@ -58,6 +58,7 @@ export async function deleteUser(req: AuthRequest, res: Response): Promise<void>
       res.status(404).json({ message: 'User not found' })
       return
     }
+    logger.info({ event: 'users.delete', adminId: req.user.id, deletedUserId: id }, 'User deleted')
     res.json({ message: 'User deleted' })
   } catch (err) {
     logger.error(err)
