@@ -80,13 +80,13 @@ describe('login', () => {
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid credentials' })
   })
 
-  it('returns 423 when account is locked', async () => {
+  it('returns 423 with Retry-After header when account is locked', async () => {
     const lockedUser = { ...mockUser, lockedUntil: new Date(Date.now() + 60_000) }
     ;(User.findOne as jest.Mock).mockResolvedValue(lockedUser)
-    const req = { body: { email: 'test@example.com', password: 'any' } } as Request
-    const res = mockRes()
-    await login(req, res)
-    expect(res.status).toHaveBeenCalledWith(423)
+    const res = { ...mockRes(), set: jest.fn() } as unknown as Response
+    await login({ body: { email: 'test@example.com', password: 'any' } } as Request, res)
+    expect((res.status as jest.Mock)).toHaveBeenCalledWith(423)
+    expect((res.set as jest.Mock)).toHaveBeenCalledWith('Retry-After', expect.any(String))
   })
 
   it('increments loginAttempts on failed password', async () => {

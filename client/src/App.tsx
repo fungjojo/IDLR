@@ -13,6 +13,7 @@ import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 import { useAppDispatch, useAppSelector } from './store/hooks'
 import { setCredentials, setInitialized } from './store/authSlice'
+import axios from 'axios'
 import api from './services/api'
 import type { BaseUser } from './types/user'
 
@@ -23,7 +24,10 @@ export default function App() {
   useEffect(() => {
     api.get<{ user: BaseUser }>('/api/auth/me')
       .then(({ data }) => { dispatch(setCredentials({ user: data.user })) })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) return
+        console.error('[auth/me]', err)
+      })
       .finally(() => { dispatch(setInitialized()) })
   }, [dispatch])
 

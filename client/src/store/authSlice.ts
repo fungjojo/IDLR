@@ -19,6 +19,8 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null
     },
+    // One-shot flag: true once the initial /api/auth/me check resolves (success or
+    // failure). Never reset — re-auth flows must do a full page reload to re-trigger.
     setInitialized(state) {
       state.initialized = true
     },

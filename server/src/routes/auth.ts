@@ -38,7 +38,15 @@ const logoutRateLimiter = rateLimit({
   message: { message: 'Too many logout attempts, please try again later' },
 })
 
-router.get('/me', requireAuth, me)
+const meRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests' },
+})
+
+router.get('/me', meRateLimiter, requireAuth, me)
 router.post('/login', loginRateLimiter, login)
 router.post('/refresh', refreshRateLimiter, refresh)
 router.post('/logout', logoutRateLimiter, logout)

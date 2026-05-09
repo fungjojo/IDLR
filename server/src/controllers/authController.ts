@@ -88,7 +88,9 @@ export async function login(req: Request, res: Response): Promise<void> {
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      res.status(423).json({ message: 'Account temporarily locked. Try again later.' })
+      const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)
+      res.set('Retry-After', String(retryAfter))
+      res.status(423).json({ message: 'Account temporarily locked. Try again later.', retryAfter })
       return
     }
 

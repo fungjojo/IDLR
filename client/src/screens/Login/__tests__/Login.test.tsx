@@ -33,6 +33,17 @@ describe('Login', () => {
     expect(container).toMatchSnapshot()
   })
 
+  it('shows lockout message on 423', async () => {
+    mockedApi.post = jest.fn().mockRejectedValue({ response: { status: 423 } })
+    renderLogin()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'a@b.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => {
+      expect(screen.getByText('Account locked. Please try again later.')).toBeInTheDocument()
+    })
+  })
+
   it('shows error message and clears password on failed login', async () => {
     mockedApi.post = jest.fn().mockRejectedValue(new Error('401'))
     renderLogin()

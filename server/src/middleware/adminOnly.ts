@@ -14,8 +14,8 @@ export async function adminOnly(req: AuthRequest, res: Response, next: NextFunct
   }
   // Verify role is still admin in DB (catches role downgrades within the token window)
   try {
-    const user = await User.findById(req.user.id).select('role').lean()
-    if (!user || (user as { role: string }).role !== 'admin') {
+    const user = await User.findById(req.user.id).select('role').lean<{ role: 'admin' | 'member' }>()
+    if (!user || user.role !== 'admin') {
       res.status(403).json({ message: 'Admin access required' })
       return
     }
