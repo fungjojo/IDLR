@@ -1,11 +1,13 @@
 import type { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { login, logout, register } from '../controllers/authController'
+import { login, logout, refresh, register } from '../controllers/authController'
 import { User } from '../models/User'
+import { RefreshToken } from '../models/RefreshToken'
 import type { AuthRequest } from '../middleware/auth'
 
 jest.mock('../models/User')
+jest.mock('../models/RefreshToken')
 jest.mock('bcryptjs')
 jest.mock('jsonwebtoken')
 
@@ -64,27 +66,32 @@ describe('login', () => {
     expect(res.json).toHaveBeenCalledWith({ message: 'Invalid credentials' })
   })
 
-  it('sets httpOnly cookie and returns user on valid credentials', async () => {
+  it('sets both httpOnly cookies and returns user on valid credentials', async () => {
     ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
     ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
     ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
     const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
     const res = mockRes()
     await login(req, res)
-    expect(res.cookie).toHaveBeenCalledWith(
-      'idlr_token',
-      'test-token',
-      expect.objectContaining({ httpOnly: true }),
-    )
+    expect(res.cookie).toHaveBeenCalledWith('idlr_token', 'test-token', expect.objectContaining({ httpOnly: true }))
+    expect(res.cookie).toHaveBeenCalledWith('idlr_refresh', 'test-token', expect.objectContaining({ httpOnly: true }))
     expect(res.json).toHaveBeenCalledWith({
-      user: {
-        id: 'user-id-1',
-        name: 'Test User',
-        email: 'test@example.com',
-        role: 'member',
-        maxHR: 185,
-      },
+      user: { id: 'user-id-1', name: 'Test User', email: 'test@example.com', role: 'member', maxHR: 185 },
     })
+  })
+
+  it('stores refresh token in DB on successful login', async () => {
+    ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+    ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
+    const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
+    const res = mockRes()
+    await login(req, res)
+    expect(RefreshToken.create).toHaveBeenCalledWith(
+      expect.objectContaining({ jti: expect.any(String), expiresAt: expect.any(Date) }),
+    )
   })
 
   it('sets secure:true and sameSite:strict in production', async () => {
@@ -93,14 +100,11 @@ describe('login', () => {
     ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
     ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
     ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
     const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
     const res = mockRes()
     await login(req, res)
-    expect(res.cookie).toHaveBeenCalledWith(
-      'idlr_token',
-      'test-token',
-      expect.objectContaining({ secure: true, sameSite: 'strict' }),
-    )
+    expect(res.cookie).toHaveBeenCalledWith('idlr_token', 'test-token', expect.objectContaining({ secure: true, sameSite: 'strict' }))
     process.env.NODE_ENV = original
   })
 
@@ -110,14 +114,11 @@ describe('login', () => {
     ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
     ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
     ;(jwt.sign as jest.Mock).mockReturnValue('test-token')
+    ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
     const req = { body: { email: 'test@example.com', password: 'correct' } } as Request
     const res = mockRes()
     await login(req, res)
-    expect(res.cookie).toHaveBeenCalledWith(
-      'idlr_token',
-      'test-token',
-      expect.objectContaining({ secure: false, sameSite: 'lax' }),
-    )
+    expect(res.cookie).toHaveBeenCalledWith('idlr_token', 'test-token', expect.objectContaining({ secure: false, sameSite: 'lax' }))
     process.env.NODE_ENV = original
   })
 
@@ -130,15 +131,102 @@ describe('login', () => {
   })
 })
 
-describe('logout', () => {
-  it('clears the auth cookie with full options and returns confirmation', () => {
-    const req = {} as Request
+describe('refresh', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns 401 when no refresh cookie is present', async () => {
+    const req = { cookies: {} } as unknown as Request
     const res = mockRes()
-    logout(req, res)
-    expect(res.clearCookie).toHaveBeenCalledWith(
-      'idlr_token',
-      expect.objectContaining({ httpOnly: true, path: '/' }),
-    )
+    await refresh(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+  })
+
+  it('returns 401 when refresh token is invalid', async () => {
+    ;(jwt.verify as jest.Mock).mockImplementation(() => { throw new Error('bad') })
+    const req = { cookies: { idlr_refresh: 'bad-token' } } as unknown as Request
+    const res = mockRes()
+    await refresh(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+  })
+
+  it('returns 401 when token is not found in DB', async () => {
+    ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
+    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue(null)
+    const req = { cookies: { idlr_refresh: 'valid-token' } } as unknown as Request
+    const res = mockRes()
+    await refresh(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid or revoked token' })
+  })
+
+  it('returns 401 when token is revoked', async () => {
+    ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
+    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({ jti: 'some-jti', revokedAt: new Date() })
+    const req = { cookies: { idlr_refresh: 'revoked-token' } } as unknown as Request
+    const res = mockRes()
+    await refresh(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid or revoked token' })
+  })
+
+  it('returns 401 when user no longer exists', async () => {
+    ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
+    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({ jti: 'some-jti', revokedAt: undefined })
+    ;(User.findById as jest.Mock).mockResolvedValue(null)
+    const req = { cookies: { idlr_refresh: 'valid-token' } } as unknown as Request
+    const res = mockRes()
+    await refresh(req, res)
+    expect(res.status).toHaveBeenCalledWith(401)
+  })
+
+  it('rotates tokens and sets new cookies on valid refresh', async () => {
+    ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'old-jti' })
+    ;(RefreshToken.findOne as jest.Mock).mockResolvedValue({ jti: 'old-jti', revokedAt: undefined })
+    ;(User.findById as jest.Mock).mockResolvedValue(mockUser)
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({})
+    ;(jwt.sign as jest.Mock).mockReturnValue('new-token')
+    ;(RefreshToken.create as jest.Mock).mockResolvedValue({})
+    const req = { cookies: { idlr_refresh: 'valid-token' } } as unknown as Request
+    const res = mockRes()
+    await refresh(req, res)
+    expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith({ jti: 'old-jti' }, { revokedAt: expect.any(Date) })
+    expect(res.cookie).toHaveBeenCalledWith('idlr_token', 'new-token', expect.objectContaining({ httpOnly: true }))
+    expect(res.cookie).toHaveBeenCalledWith('idlr_refresh', 'new-token', expect.objectContaining({ httpOnly: true }))
+    expect(res.json).toHaveBeenCalledWith({ message: 'Token refreshed' })
+  })
+})
+
+describe('logout', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('clears both cookies when no refresh token is present', async () => {
+    const req = { cookies: {} } as unknown as Request
+    const res = mockRes()
+    await logout(req, res)
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_token', expect.objectContaining({ httpOnly: true }))
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_refresh', expect.objectContaining({ httpOnly: true }))
+    expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' })
+  })
+
+  it('revokes refresh token in DB and clears both cookies', async () => {
+    ;(jwt.verify as jest.Mock).mockReturnValue({ id: 'user-id-1', jti: 'some-jti' })
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({})
+    const req = { cookies: { idlr_refresh: 'valid-refresh-token' } } as unknown as Request
+    const res = mockRes()
+    await logout(req, res)
+    expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith({ jti: 'some-jti' }, { revokedAt: expect.any(Date) })
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_token', expect.objectContaining({ httpOnly: true }))
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_refresh', expect.objectContaining({ httpOnly: true }))
+    expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' })
+  })
+
+  it('still clears cookies even if refresh token is invalid', async () => {
+    ;(jwt.verify as jest.Mock).mockImplementation(() => { throw new Error('expired') })
+    const req = { cookies: { idlr_refresh: 'expired-token' } } as unknown as Request
+    const res = mockRes()
+    await logout(req, res)
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_token', expect.anything())
+    expect(res.clearCookie).toHaveBeenCalledWith('idlr_refresh', expect.anything())
     expect(res.json).toHaveBeenCalledWith({ message: 'Logged out' })
   })
 })

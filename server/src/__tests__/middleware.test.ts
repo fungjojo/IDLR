@@ -56,7 +56,7 @@ describe('requireAuth', () => {
     expect(jwt.verify).toHaveBeenCalledWith(
       'valid-token',
       expect.any(String),
-      expect.objectContaining({ algorithms: ['HS256'] }),
+      expect.objectContaining({ algorithms: ['HS256'], issuer: 'idlr', audience: 'idlr-client' }),
     )
   })
 })

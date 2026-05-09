@@ -1,26 +1,61 @@
+import { randomUUID } from 'crypto'
 import { type Request, type Response, type CookieOptions } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
+import { RefreshToken } from '../models/RefreshToken'
 import { type AuthRequest } from '../middleware/auth'
 
-const JWT_EXPIRES = '7d'
 const BCRYPT_ROUNDS = 12
 const MAX_PASSWORD_LENGTH = 72
 const MIN_PASSWORD_LENGTH = 8
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const COOKIE_NAME = 'idlr_token'
-const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
-function cookieOptions(): CookieOptions {
+const ACCESS_EXPIRES = '15m'
+const REFRESH_EXPIRES = '7d'
+const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+export const ACCESS_COOKIE = 'idlr_token'
+export const REFRESH_COOKIE = 'idlr_refresh'
+
+const ISSUER = 'idlr'
+const AUDIENCE = 'idlr-client'
+
+function accessCookieOptions(): CookieOptions {
   const isProd = process.env.NODE_ENV === 'production'
   return {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'strict' : 'lax',
-    maxAge: COOKIE_MAX_AGE_MS,
+    maxAge: 15 * 60 * 1000,
     path: '/',
   }
+}
+
+function refreshCookieOptions(): CookieOptions {
+  const isProd = process.env.NODE_ENV === 'production'
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'strict' : 'lax',
+    maxAge: REFRESH_MAX_AGE_MS,
+    path: '/api/auth',
+  }
+}
+
+function issueTokenPair(userId: string, role: 'admin' | 'member') {
+  const accessToken = jwt.sign(
+    { id: userId, role },
+    process.env.JWT_SECRET as string,
+    { expiresIn: ACCESS_EXPIRES, algorithm: 'HS256', jwtid: randomUUID(), issuer: ISSUER, audience: AUDIENCE },
+  )
+  const refreshJti = randomUUID()
+  const refreshToken = jwt.sign(
+    { id: userId },
+    process.env.REFRESH_TOKEN_SECRET as string,
+    { expiresIn: REFRESH_EXPIRES, algorithm: 'HS256', jwtid: refreshJti, issuer: ISSUER, audience: AUDIENCE },
+  )
+  return { accessToken, refreshToken, refreshJti }
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
@@ -56,16 +91,20 @@ export async function login(req: Request, res: Response): Promise<void> {
       return
     }
 
-    const token = jwt.sign(
-      { id: user._id.toString(), role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: JWT_EXPIRES, algorithm: 'HS256' },
-    )
+    const userId = user._id.toString()
+    const { accessToken, refreshToken, refreshJti } = issueTokenPair(userId, user.role)
 
-    res.cookie(COOKIE_NAME, token, cookieOptions())
+    await RefreshToken.create({
+      jti: refreshJti,
+      userId: user._id,
+      expiresAt: new Date(Date.now() + REFRESH_MAX_AGE_MS),
+    })
+
+    res.cookie(ACCESS_COOKIE, accessToken, accessCookieOptions())
+    res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions())
     res.json({
       user: {
-        id: user._id.toString(),
+        id: userId,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -78,8 +117,88 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 }
 
-export function logout(_req: Request, res: Response): void {
-  res.clearCookie(COOKIE_NAME, cookieOptions())
+export async function refresh(req: Request, res: Response): Promise<void> {
+  const token = req.cookies?.[REFRESH_COOKIE] as string | undefined
+  if (!token) {
+    res.status(401).json({ message: 'Unauthorised' })
+    return
+  }
+
+  try {
+    const raw = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET as string, {
+      algorithms: ['HS256'],
+      issuer: ISSUER,
+      audience: AUDIENCE,
+    }) as unknown
+
+    if (
+      typeof raw !== 'object' || raw === null ||
+      !('id' in raw) || !('jti' in raw) ||
+      typeof (raw as Record<string, unknown>).id !== 'string' ||
+      typeof (raw as Record<string, unknown>).jti !== 'string'
+    ) {
+      res.status(401).json({ message: 'Invalid token' })
+      return
+    }
+
+    const { id: userId, jti } = raw as { id: string; jti: string }
+
+    const stored = await RefreshToken.findOne({ jti })
+    if (!stored || stored.revokedAt) {
+      res.status(401).json({ message: 'Invalid or revoked token' })
+      return
+    }
+
+    const user = await User.findById(userId)
+    if (!user) {
+      res.status(401).json({ message: 'Invalid token' })
+      return
+    }
+
+    await RefreshToken.findOneAndUpdate({ jti }, { revokedAt: new Date() })
+
+    const { accessToken, refreshToken: newRefreshToken, refreshJti: newJti } = issueTokenPair(user._id.toString(), user.role)
+    await RefreshToken.create({
+      jti: newJti,
+      userId: user._id,
+      expiresAt: new Date(Date.now() + REFRESH_MAX_AGE_MS),
+    })
+
+    res.cookie(ACCESS_COOKIE, accessToken, accessCookieOptions())
+    res.cookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions())
+    res.json({ message: 'Token refreshed' })
+  } catch {
+    res.status(401).json({ message: 'Invalid or expired token' })
+  }
+}
+
+export async function logout(req: Request, res: Response): Promise<void> {
+  const token = req.cookies?.[REFRESH_COOKIE] as string | undefined
+
+  if (token) {
+    try {
+      const raw = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET as string, {
+        algorithms: ['HS256'],
+        issuer: ISSUER,
+        audience: AUDIENCE,
+      }) as unknown
+      if (
+        typeof raw === 'object' && raw !== null &&
+        'jti' in raw &&
+        typeof (raw as Record<string, unknown>).jti === 'string'
+      ) {
+        await RefreshToken.findOneAndUpdate(
+          { jti: (raw as { jti: string }).jti },
+          { revokedAt: new Date() },
+        )
+      }
+    } catch {
+      // Best-effort revocation — always clear cookies
+    }
+  }
+
+  res.clearCookie(ACCESS_COOKIE, accessCookieOptions())
+  res.clearCookie(REFRESH_COOKIE, refreshCookieOptions())
   res.json({ message: 'Logged out' })
 }
 
