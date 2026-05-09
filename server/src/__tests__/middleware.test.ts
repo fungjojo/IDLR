@@ -5,6 +5,9 @@ import { adminOnly } from '../middleware/adminOnly'
 
 jest.mock('jsonwebtoken')
 
+beforeAll(() => { process.env.JWT_SECRET = 'test-secret-at-least-32-characters-long' })
+afterAll(() => { delete process.env.JWT_SECRET })
+
 function mockRes() {
   const res = {} as Response
   res.status = jest.fn().mockReturnValue(res)
@@ -15,8 +18,8 @@ function mockRes() {
 describe('requireAuth', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it('returns 401 when no Authorization header', () => {
-    const req = { headers: {} } as AuthRequest
+  it('returns 401 when no cookie is present', () => {
+    const req = { cookies: {} } as unknown as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
     requireAuth(req, res, next)
@@ -24,18 +27,9 @@ describe('requireAuth', () => {
     expect(next).not.toHaveBeenCalled()
   })
 
-  it('returns 401 when header does not start with Bearer', () => {
-    const req = { headers: { authorization: 'Basic abc' } } as AuthRequest
-    const res = mockRes()
-    const next = jest.fn() as NextFunction
-    requireAuth(req, res, next)
-    expect(res.status).toHaveBeenCalledWith(401)
-    expect(next).not.toHaveBeenCalled()
-  })
-
-  it('returns 401 when token is invalid', () => {
+  it('returns 401 when cookie is present but token is invalid', () => {
     ;(jwt.verify as jest.Mock).mockImplementation(() => { throw new Error('bad token') })
-    const req = { headers: { authorization: 'Bearer bad-token' } } as AuthRequest
+    const req = { cookies: { idlr_token: 'bad-token' } } as unknown as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
     requireAuth(req, res, next)
@@ -43,15 +37,27 @@ describe('requireAuth', () => {
     expect(next).not.toHaveBeenCalled()
   })
 
-  it('calls next and sets req.user on valid token', () => {
+  it('calls next and sets req.user on valid cookie', () => {
     const payload = { id: 'user-1', role: 'member' as const }
     ;(jwt.verify as jest.Mock).mockReturnValue(payload)
-    const req = { headers: { authorization: 'Bearer valid-token' } } as AuthRequest
+    const req = { cookies: { idlr_token: 'valid-token' } } as unknown as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
     requireAuth(req, res, next)
     expect(next).toHaveBeenCalled()
     expect(req.user).toEqual(payload)
+  })
+
+  it('verifies token with HS256 algorithm', () => {
+    const payload = { id: 'user-1', role: 'member' as const }
+    ;(jwt.verify as jest.Mock).mockReturnValue(payload)
+    const req = { cookies: { idlr_token: 'valid-token' } } as unknown as AuthRequest
+    requireAuth(req, mockRes(), jest.fn() as NextFunction)
+    expect(jwt.verify).toHaveBeenCalledWith(
+      'valid-token',
+      expect.any(String),
+      expect.objectContaining({ algorithms: ['HS256'] }),
+    )
   })
 })
 
