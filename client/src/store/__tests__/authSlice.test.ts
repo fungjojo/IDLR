@@ -1,4 +1,4 @@
-import authReducer, { setCredentials, logout } from '../authSlice'
+import authReducer, { setCredentials, logout, setInitialized } from '../authSlice'
 
 const mockUser = {
   id: '1',
@@ -8,39 +8,19 @@ const mockUser = {
   maxHR: 185,
 }
 
-const emptyState = { user: null, loading: false }
-
-beforeEach(() => {
-  localStorage.clear()
-})
+const emptyState = { user: null, loading: false, initialized: false }
 
 describe('authSlice', () => {
   describe('initialState', () => {
-    it('returns empty state when localStorage is empty', () => {
+    it('starts with null user and initialized false', () => {
       const state = authReducer(undefined, { type: '@@INIT' })
       expect(state.user).toBeNull()
-      expect(state.loading).toBe(false)
+      expect(state.initialized).toBe(false)
     })
 
-    it('hydrates user from localStorage on init', () => {
+    it('does not read from localStorage', () => {
       localStorage.setItem('idlr_user', JSON.stringify(mockUser))
-
-      jest.resetModules()
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { default: freshReducer } = require('../authSlice')
-      const state = freshReducer(undefined, { type: '@@INIT' })
-
-      expect(state.user).toEqual(mockUser)
-    })
-
-    it('returns null user when idlr_user is invalid JSON', () => {
-      localStorage.setItem('idlr_user', 'not-json')
-
-      jest.resetModules()
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { default: freshReducer } = require('../authSlice')
-      const state = freshReducer(undefined, { type: '@@INIT' })
-
+      const state = authReducer(undefined, { type: '@@INIT' })
       expect(state.user).toBeNull()
     })
   })
@@ -50,24 +30,19 @@ describe('authSlice', () => {
       const state = authReducer(emptyState, setCredentials({ user: mockUser }))
       expect(state.user).toEqual(mockUser)
     })
-
-    it('does not write to localStorage (persistence is handled by authListener)', () => {
-      authReducer(emptyState, setCredentials({ user: mockUser }))
-      expect(localStorage.getItem('idlr_user')).toBeNull()
-    })
   })
 
   describe('logout', () => {
     it('clears user from state', () => {
-      const loggedIn = { user: mockUser, loading: false }
-      const state = authReducer(loggedIn, logout())
+      const state = authReducer({ ...emptyState, user: mockUser }, logout())
       expect(state.user).toBeNull()
     })
+  })
 
-    it('does not touch localStorage (persistence is handled by authListener)', () => {
-      localStorage.setItem('idlr_user', JSON.stringify(mockUser))
-      authReducer({ user: mockUser, loading: false }, logout())
-      expect(localStorage.getItem('idlr_user')).toBe(JSON.stringify(mockUser))
+  describe('setInitialized', () => {
+    it('sets initialized to true', () => {
+      const state = authReducer(emptyState, setInitialized())
+      expect(state.initialized).toBe(true)
     })
   })
 })

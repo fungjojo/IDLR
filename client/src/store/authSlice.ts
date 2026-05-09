@@ -6,29 +6,12 @@ type AuthUser = BaseUser
 interface AuthState {
   user: AuthUser | null
   loading: boolean
-}
-
-export const USER_KEY = 'idlr_user'
-
-function loadUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY)
-    return raw ? (JSON.parse(raw) as AuthUser) : null
-  } catch {
-    return null
-  }
-}
-
-function buildInitialState(): AuthState {
-  return {
-    user: loadUser(),
-    loading: false,
-  }
+  initialized: boolean
 }
 
 const authSlice = createSlice({
   name: 'auth',
-  initialState: buildInitialState,
+  initialState: { user: null, loading: false, initialized: false } as AuthState,
   reducers: {
     setCredentials(state, action: PayloadAction<{ user: AuthUser }>) {
       state.user = action.payload.user
@@ -36,8 +19,11 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null
     },
+    setInitialized(state) {
+      state.initialized = true
+    },
   },
 })
 
-export const { setCredentials, logout } = authSlice.actions
+export const { setCredentials, logout, setInitialized } = authSlice.actions
 export default authSlice.reducer

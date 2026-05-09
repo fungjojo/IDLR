@@ -22,6 +22,7 @@ function renderAdmin(currentUserId = 'user-id-1') {
   const preloadedAuth = {
     user: { id: currentUserId, name: 'Alice', email: 'alice@example.com', role: 'admin' as const, maxHR: 185 },
     loading: false,
+    initialized: true,
   }
   const store = configureStore({
     reducer: { auth: authReducer, admin: adminReducer },

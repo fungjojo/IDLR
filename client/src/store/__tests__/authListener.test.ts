@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import authReducer, { setCredentials, logout, USER_KEY } from '../authSlice'
+import authReducer, { setCredentials, logout } from '../authSlice'
 import authListenerMiddleware from '../authListener'
 
 const mockUser = {
@@ -18,25 +18,18 @@ function makeStore() {
   })
 }
 
-beforeEach(() => {
-  localStorage.clear()
-})
+beforeEach(() => { localStorage.clear() })
 
 describe('authListenerMiddleware', () => {
-  describe('setCredentials', () => {
-    it('persists user to localStorage as JSON', () => {
-      const store = makeStore()
-      store.dispatch(setCredentials({ user: mockUser }))
-      expect(JSON.parse(localStorage.getItem(USER_KEY) ?? '')).toEqual(mockUser)
-    })
+  it('does not persist user to localStorage on setCredentials', () => {
+    const store = makeStore()
+    store.dispatch(setCredentials({ user: mockUser }))
+    expect(localStorage.getItem('idlr_user')).toBeNull()
   })
 
-  describe('logout', () => {
-    it('removes user from localStorage', () => {
-      localStorage.setItem(USER_KEY, JSON.stringify(mockUser))
-      const store = makeStore()
-      store.dispatch(logout())
-      expect(localStorage.getItem(USER_KEY)).toBeNull()
-    })
+  it('does not touch localStorage on logout', () => {
+    const store = makeStore()
+    store.dispatch(logout())
+    expect(localStorage.getItem('idlr_user')).toBeNull()
   })
 })
