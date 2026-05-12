@@ -11,7 +11,7 @@ export interface StravaTokenResponse {
   athlete?: { id: number }
 }
 
-interface StravaActivity {
+export interface StravaActivity {
   id: number
   name: string
   start_date: string
@@ -85,8 +85,20 @@ export async function refreshAccessToken(user: IUser): Promise<string> {
 }
 
 export async function fetchActivities(accessToken: string, after?: number): Promise<StravaActivity[]> {
-  const params = new URLSearchParams({ per_page: '50', ...(after ? { after: String(after) } : {}) })
-  return stravaFetch(`/athlete/activities?${params}`, accessToken) as Promise<StravaActivity[]>
+  const all: StravaActivity[] = []
+  let page = 1
+  while (true) {
+    const params = new URLSearchParams({
+      per_page: '50',
+      page: String(page),
+      ...(after ? { after: String(after) } : {}),
+    })
+    const batch = await stravaFetch(`/athlete/activities?${params}`, accessToken) as StravaActivity[]
+    all.push(...batch)
+    if (batch.length < 50) break
+    page++
+  }
+  return all
 }
 
 export async function fetchActivityStreams(
@@ -110,6 +122,9 @@ export function normaliseActivity(
   hrStream: number[],
   paceStream: number[],
 ): ActivityData {
+  const computedMax = hrStream.length > 0
+    ? hrStream.reduce((max, v) => (v > max ? v : max), 0)
+    : 0
   return {
     name: raw.name,
     date: new Date(raw.start_date),
@@ -118,7 +133,7 @@ export function normaliseActivity(
     avgHR: raw.average_heartrate ?? (hrStream.length > 0
       ? Math.round(hrStream.reduce((s, v) => s + v, 0) / hrStream.length)
       : 0),
-    maxHR: raw.max_heartrate ?? (hrStream.length > 0 ? Math.max(...hrStream) : 0),
+    maxHR: raw.max_heartrate ?? computedMax,
     hrStream,
     paceStream,
     cadenceAvg: raw.average_cadence,

@@ -4,7 +4,7 @@ import { stravaConnect, stravaCallback, stravaSync } from '../controllers/strava
 
 const mockFindById = jest.fn()
 const mockFindByIdAndUpdate = jest.fn()
-const mockExists = jest.fn()
+const mockActivityFind = jest.fn()
 const mockActivityCreate = jest.fn()
 const mockActivityFindOne = jest.fn()
 jest.mock('../models/User', () => ({
@@ -15,7 +15,7 @@ jest.mock('../models/User', () => ({
 }))
 jest.mock('../models/Activity', () => ({
   Activity: {
-    exists: (...args: unknown[]) => mockExists(...args),
+    find: (...args: unknown[]) => mockActivityFind(...args),
     create: (...args: unknown[]) => mockActivityCreate(...args),
     findOne: (...args: unknown[]) => mockActivityFindOne(...args),
   },
@@ -34,12 +34,23 @@ jest.mock('../services/stravaService', () => ({
 }))
 
 function makeRes() {
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis(), redirect: jest.fn() }
+  const res = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    redirect: jest.fn(),
+    cookie: jest.fn(),
+    clearCookie: jest.fn(),
+  }
   return res as unknown as Response
 }
 
 function makeReq(overrides = {}): AuthRequest {
-  return { user: { id: 'user1', email: 'u@u.com', role: 'member' }, query: {}, ...overrides } as unknown as AuthRequest
+  return {
+    user: { id: 'user1', email: 'u@u.com', role: 'member' },
+    query: {},
+    cookies: {},
+    ...overrides,
+  } as unknown as AuthRequest
 }
 
 describe('stravaConnect', () => {
@@ -50,11 +61,26 @@ describe('stravaConnect', () => {
   })
   afterEach(() => { process.env = OLD_ENV })
 
-  it('redirects to Strava auth URL', () => {
+  it('redirects to Strava auth URL with state param', () => {
     const res = makeRes()
     stravaConnect({} as Request, res)
     expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava.com/oauth/authorize'))
     expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('client_id=cid'))
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('state='))
+  })
+
+  it('sets strava_state cookie before redirecting', () => {
+    const res = makeRes()
+    stravaConnect({} as Request, res)
+    expect(res.cookie).toHaveBeenCalledWith('strava_state', expect.any(String), expect.objectContaining({ httpOnly: true, sameSite: 'lax' }))
+  })
+
+  it('state in cookie matches state in redirect URL', () => {
+    const res = makeRes()
+    stravaConnect({} as Request, res)
+    const cookieState = (res.cookie as jest.Mock).mock.calls[0][1] as string
+    const redirectUrl = (res.redirect as jest.Mock).mock.calls[0][0] as string
+    expect(redirectUrl).toContain(`state=${cookieState}`)
   })
 
   it('returns 503 when env vars are missing', () => {
@@ -72,15 +98,45 @@ describe('stravaCallback', () => {
   it('exchanges code and redirects to profile on success', async () => {
     mockExchangeCode.mockResolvedValue({ access_token: 'at', refresh_token: 'rt', expires_at: 9999, athlete: { id: 42 } })
     mockFindByIdAndUpdate.mockResolvedValue(null)
-    const req = makeReq({ query: { code: 'auth_code' } })
+    const req = makeReq({ query: { code: 'auth_code', state: 'abc123' }, cookies: { strava_state: 'abc123' } })
     const res = makeRes()
     await stravaCallback(req, res)
     expect(mockExchangeCode).toHaveBeenCalledWith('auth_code')
     expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=connected'))
   })
 
-  it('redirects with denied when error query param is present', async () => {
-    const req = makeReq({ query: { error: 'access_denied' } })
+  it('clears the state cookie on success', async () => {
+    mockExchangeCode.mockResolvedValue({ access_token: 'at', refresh_token: 'rt', expires_at: 9999 })
+    mockFindByIdAndUpdate.mockResolvedValue(null)
+    const req = makeReq({ query: { code: 'c', state: 'xyz' }, cookies: { strava_state: 'xyz' } })
+    const res = makeRes()
+    await stravaCallback(req, res)
+    expect(res.clearCookie).toHaveBeenCalledWith('strava_state')
+  })
+
+  it('redirects with denied when state is missing from query', async () => {
+    const req = makeReq({ query: { code: 'c' }, cookies: { strava_state: 'abc' } })
+    const res = makeRes()
+    await stravaCallback(req, res)
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=denied'))
+  })
+
+  it('redirects with denied when state does not match cookie', async () => {
+    const req = makeReq({ query: { code: 'c', state: 'wrong' }, cookies: { strava_state: 'correct' } })
+    const res = makeRes()
+    await stravaCallback(req, res)
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=denied'))
+  })
+
+  it('redirects with denied when cookie is missing', async () => {
+    const req = makeReq({ query: { code: 'c', state: 'abc' }, cookies: {} })
+    const res = makeRes()
+    await stravaCallback(req, res)
+    expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=denied'))
+  })
+
+  it('redirects with denied when Strava sends error param', async () => {
+    const req = makeReq({ query: { error: 'access_denied' }, cookies: {} })
     const res = makeRes()
     await stravaCallback(req, res)
     expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=denied'))
@@ -88,7 +144,7 @@ describe('stravaCallback', () => {
 
   it('redirects with error when exchange throws', async () => {
     mockExchangeCode.mockRejectedValue(new Error('network'))
-    const req = makeReq({ query: { code: 'bad_code' } })
+    const req = makeReq({ query: { code: 'c', state: 'abc' }, cookies: { strava_state: 'abc' } })
     const res = makeRes()
     await stravaCallback(req, res)
     expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=error'))
@@ -109,6 +165,13 @@ describe('stravaSync', () => {
     max_heartrate: 175,
   }
 
+  it('returns 500 when User.findById throws', async () => {
+    mockFindById.mockRejectedValue(new Error('db error'))
+    const res = makeRes()
+    await stravaSync(makeReq(), res)
+    expect(res.status).toHaveBeenCalledWith(500)
+  })
+
   it('returns 400 when Strava is not connected', async () => {
     mockFindById.mockResolvedValue({ stravaRefreshToken: undefined })
     const res = makeRes()
@@ -124,16 +187,19 @@ describe('stravaSync', () => {
     expect(res.status).toHaveBeenCalledWith(502)
   })
 
-  it('creates new activities and skips existing ones', async () => {
+  it('batch-checks duplicates and creates only new activities', async () => {
     mockFindById.mockResolvedValue(userStub)
     mockRefreshToken.mockResolvedValue('access_token')
     mockActivityFindOne.mockReturnValue({ sort: jest.fn().mockReturnThis(), select: jest.fn().mockResolvedValue(null) })
     mockFetchActivities.mockResolvedValue([rawActivity, { ...rawActivity, id: 2 }])
-    mockExists.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    // Activity.find returns the existing one (id: 2)
+    mockActivityFind.mockResolvedValue([{ stravaActivityId: 2 }])
     mockFetchStreams.mockResolvedValue({ hrStream: [140], paceStream: [333] })
     mockActivityCreate.mockResolvedValue({})
     const res = makeRes()
     await stravaSync(makeReq(), res)
+    // Should call Activity.find once (batch), not Activity.exists twice
+    expect(mockActivityFind).toHaveBeenCalledTimes(1)
     expect(mockActivityCreate).toHaveBeenCalledTimes(1)
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ created: 1, skipped: 1 }))
   })
@@ -143,7 +209,7 @@ describe('stravaSync', () => {
     mockRefreshToken.mockResolvedValue('access_token')
     mockActivityFindOne.mockReturnValue({ sort: jest.fn().mockReturnThis(), select: jest.fn().mockResolvedValue(null) })
     mockFetchActivities.mockResolvedValue([rawActivity])
-    mockExists.mockResolvedValue(false)
+    mockActivityFind.mockResolvedValue([])
     mockFetchStreams.mockRejectedValue(new Error('stream error'))
     const res = makeRes()
     await stravaSync(makeReq(), res)

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import type { Request, Response } from 'express'
 import { User } from '../models/User'
 import { Activity } from '../models/Activity'
@@ -7,9 +8,13 @@ import {
   fetchActivities,
   fetchActivityStreams,
   normaliseActivity,
+  type StravaActivity,
 } from '../services/stravaService'
 import { logger } from '../utils/logger'
 import type { AuthRequest } from '../middleware/auth'
+
+const STATE_COOKIE = 'strava_state'
+const CLIENT_URL = () => process.env.CLIENT_URL ?? ''
 
 export function stravaConnect(_req: Request, res: Response): void {
   const { STRAVA_CLIENT_ID, STRAVA_REDIRECT_URI } = process.env
@@ -17,21 +22,33 @@ export function stravaConnect(_req: Request, res: Response): void {
     res.status(503).json({ message: 'Strava integration not configured' })
     return
   }
+
+  const state = randomBytes(16).toString('hex')
+  res.cookie(STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 10 * 60 * 1000,
+  })
+
   const params = new URLSearchParams({
     client_id: STRAVA_CLIENT_ID,
     redirect_uri: STRAVA_REDIRECT_URI,
     response_type: 'code',
     approval_prompt: 'auto',
     scope: 'read,activity:read_all',
+    state,
   })
   res.redirect(`https://www.strava.com/oauth/authorize?${params}`)
 }
 
 export async function stravaCallback(req: AuthRequest, res: Response): Promise<void> {
-  const { code, error } = req.query as Record<string, string>
+  const { code, error, state } = req.query as Record<string, string>
+  const expectedState = req.cookies?.[STATE_COOKIE] as string | undefined
+  res.clearCookie(STATE_COOKIE)
 
-  if (error || !code) {
-    res.redirect(`${process.env.CLIENT_URL ?? ''}/profile?strava=denied`)
+  if (error || !code || !state || state !== expectedState) {
+    res.redirect(`${CLIENT_URL()}/profile?strava=denied`)
     return
   }
 
@@ -44,15 +61,23 @@ export async function stravaCallback(req: AuthRequest, res: Response): Promise<v
       stravaAthleteId: tokens.athlete?.id,
     })
     logger.info({ event: 'strava.connected', userId: req.user!.id }, 'Strava connected')
-    res.redirect(`${process.env.CLIENT_URL ?? ''}/profile?strava=connected`)
+    res.redirect(`${CLIENT_URL()}/profile?strava=connected`)
   } catch (err) {
     logger.error({ err }, 'Strava callback failed')
-    res.redirect(`${process.env.CLIENT_URL ?? ''}/profile?strava=error`)
+    res.redirect(`${CLIENT_URL()}/profile?strava=error`)
   }
 }
 
 export async function stravaSync(req: AuthRequest, res: Response): Promise<void> {
-  const user = await User.findById(req.user!.id)
+  let user
+  try {
+    user = await User.findById(req.user!.id)
+  } catch (err) {
+    logger.error({ err }, 'Failed to look up user for Strava sync')
+    res.status(500).json({ message: 'Server error' })
+    return
+  }
+
   if (!user?.stravaRefreshToken) {
     res.status(400).json({ message: 'Strava not connected' })
     return
@@ -67,13 +92,12 @@ export async function stravaSync(req: AuthRequest, res: Response): Promise<void>
     return
   }
 
-  // Sync only activities newer than the most recent one we have
   const latest = await Activity.findOne({ userId: user._id, source: 'strava' })
     .sort({ date: -1 })
     .select('date')
   const after = latest ? Math.floor(new Date(latest.date).getTime() / 1000) : undefined
 
-  let rawActivities
+  let rawActivities: StravaActivity[]
   try {
     rawActivities = await fetchActivities(accessToken, after)
   } catch (err) {
@@ -82,11 +106,18 @@ export async function stravaSync(req: AuthRequest, res: Response): Promise<void>
     return
   }
 
+  // Batch duplicate check — one query instead of N round-trips
+  const incomingIds = rawActivities.map(r => r.id)
+  const existingDocs = await Activity.find(
+    { userId: user._id, stravaActivityId: { $in: incomingIds } },
+    { stravaActivityId: 1 },
+  )
+  const existingIds = new Set(existingDocs.map(a => a.stravaActivityId))
+
   const results = { created: 0, skipped: 0 }
 
   for (const raw of rawActivities) {
-    const exists = await Activity.exists({ userId: user._id, stravaActivityId: raw.id })
-    if (exists) { results.skipped++; continue }
+    if (existingIds.has(raw.id)) { results.skipped++; continue }
 
     try {
       const { hrStream, paceStream } = await fetchActivityStreams(raw.id, accessToken)

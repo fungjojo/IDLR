@@ -97,6 +97,24 @@ describe('fetchActivities', () => {
       expect.anything(),
     )
   })
+
+  it('paginates until a partial page is returned', async () => {
+    const page1 = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: 'Run' }))
+    const page2 = [{ id: 51, name: 'Run' }]
+    mockFetch
+      .mockReturnValueOnce(jsonResponse(page1))
+      .mockReturnValueOnce(jsonResponse(page2))
+    const result = await fetchActivities('token')
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(result).toHaveLength(51)
+  })
+
+  it('stops after a single empty page', async () => {
+    mockFetch.mockReturnValue(jsonResponse([]))
+    const result = await fetchActivities('token')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(result).toHaveLength(0)
+  })
 })
 
 describe('fetchActivityStreams', () => {
@@ -150,5 +168,13 @@ describe('normaliseActivity', () => {
     const result = normaliseActivity(noHR, [140, 160], [])
     expect(result.avgHR).toBe(150)
     expect(result.maxHR).toBe(160)
+  })
+
+  it('handles large hrStream without stack overflow', () => {
+    const largeStream = Array.from({ length: 15000 }, (_, i) => 130 + (i % 50))
+    const noHR = { ...raw, average_heartrate: undefined, max_heartrate: undefined }
+    expect(() => normaliseActivity(noHR, largeStream, [])).not.toThrow()
+    const result = normaliseActivity(noHR, largeStream, [])
+    expect(result.maxHR).toBe(179)
   })
 })
