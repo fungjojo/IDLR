@@ -46,9 +46,17 @@ const meRateLimiter = rateLimit({
   message: { message: 'Too many requests' },
 })
 
+const sessionRevokeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many session revocation attempts' },
+})
+
 router.get('/me', meRateLimiter, requireAuth, me)
 router.get('/sessions', meRateLimiter, requireAuth, getSessions)
-router.delete('/sessions/:jti', meRateLimiter, requireAuth, revokeSession)
+router.delete('/sessions/:jti', sessionRevokeLimiter, requireAuth, revokeSession)
 router.post('/login', loginRateLimiter, login)
 router.post('/refresh', refreshRateLimiter, refresh)
 router.post('/logout', logoutRateLimiter, logout)

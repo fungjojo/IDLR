@@ -19,4 +19,9 @@ describe('Security headers (helmet)', () => {
     const res = await request(app).get('/api/health')
     expect(res.headers['referrer-policy']).toBeDefined()
   })
+
+  it('sets content-security-policy header', async () => {
+    const res = await request(app).get('/api/health')
+    expect(res.headers['content-security-policy']).toBeDefined()
+  })
 })

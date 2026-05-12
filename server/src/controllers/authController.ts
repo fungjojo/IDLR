@@ -7,6 +7,8 @@ import { RefreshToken } from '../models/RefreshToken'
 import { type AuthRequest } from '../middleware/auth'
 import { logger } from '../utils/logger'
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 const BCRYPT_ROUNDS = 12
 const MAX_PASSWORD_LENGTH = 72
 const MIN_PASSWORD_LENGTH = 8
@@ -136,7 +138,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    logger.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -228,7 +230,7 @@ export async function logout(req: Request, res: Response): Promise<void> {
           { jti },
           { revokedAt: new Date() },
         )
-        if (userId) logger.info({ event: 'auth.logout', userId }, 'User logged out')
+        logger.info({ event: 'auth.logout', userId: userId ?? 'unknown' }, 'User logged out')
       }
     } catch {
       // Best-effort revocation — always clear cookies
@@ -291,7 +293,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    logger.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -313,7 +315,7 @@ export async function me(req: AuthRequest, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    logger.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -322,19 +324,23 @@ export async function getSessions(req: AuthRequest, res: Response): Promise<void
   try {
     const sessions = await RefreshToken.find(
       { userId: req.user!.id, revokedAt: { $exists: false }, expiresAt: { $gt: new Date() } },
-      { jti: 1, createdAt: 1, expiresAt: 1 },
+      { jti: 1, createdAt: 1, expiresAt: 1, _id: 0 },
     ).sort({ createdAt: -1 })
     res.json({
       sessions: sessions.map((s) => ({ jti: s.jti, createdAt: s.createdAt, expiresAt: s.expiresAt })),
     })
   } catch (err) {
-    logger.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }
 
 export async function revokeSession(req: AuthRequest, res: Response): Promise<void> {
-  const { jti } = req.params
+  const jti = req.params.jti as string
+  if (!UUID_REGEX.test(jti)) {
+    res.status(400).json({ message: 'Invalid session ID' })
+    return
+  }
   try {
     const result = await RefreshToken.findOneAndUpdate(
       { jti, userId: req.user!.id, revokedAt: { $exists: false } },
@@ -347,7 +353,7 @@ export async function revokeSession(req: AuthRequest, res: Response): Promise<vo
     logger.info({ event: 'auth.session.revoked', userId: req.user!.id, jti }, 'Session revoked')
     res.json({ message: 'Session revoked' })
   } catch (err) {
-    logger.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }

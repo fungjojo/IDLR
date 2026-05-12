@@ -417,12 +417,12 @@ describe('getSessions', () => {
 
   const userReq = { user: { id: 'user-id-1', role: 'member' as const } } as AuthRequest
 
-  it('returns active sessions for the current user', async () => {
+  it('returns active sessions for the current user without _id', async () => {
     const now = new Date()
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     const mockSessions = [
-      { jti: 'jti-1', createdAt: now, expiresAt: expires },
-      { jti: 'jti-2', createdAt: now, expiresAt: expires },
+      { _id: 'mongo-id-1', jti: 'jti-1', createdAt: now, expiresAt: expires },
+      { _id: 'mongo-id-2', jti: 'jti-2', createdAt: now, expiresAt: expires },
     ]
     const sortMock = jest.fn().mockResolvedValue(mockSessions)
     ;(RefreshToken.find as jest.Mock).mockReturnValue({ sort: sortMock })
@@ -430,9 +430,23 @@ describe('getSessions', () => {
     await getSessions(userReq, res)
     expect(RefreshToken.find).toHaveBeenCalledWith(
       { userId: 'user-id-1', revokedAt: { $exists: false }, expiresAt: { $gt: expect.any(Date) } },
-      { jti: 1, createdAt: 1, expiresAt: 1 },
+      { jti: 1, createdAt: 1, expiresAt: 1, _id: 0 },
     )
-    expect(res.json).toHaveBeenCalledWith({ sessions: mockSessions.map((s) => ({ jti: s.jti, createdAt: s.createdAt, expiresAt: s.expiresAt })) })
+    const { sessions } = (res.json as jest.Mock).mock.calls[0][0] as { sessions: Record<string, unknown>[] }
+    expect(sessions).toHaveLength(2)
+    sessions.forEach((s) => {
+      expect(s).toHaveProperty('jti')
+      expect(s).toHaveProperty('createdAt')
+      expect(s).toHaveProperty('expiresAt')
+      expect(s).not.toHaveProperty('_id')
+    })
+  })
+
+  it('returns empty sessions array when no active sessions', async () => {
+    ;(RefreshToken.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockResolvedValue([]) })
+    const res = mockRes()
+    await getSessions(userReq, res)
+    expect(res.json).toHaveBeenCalledWith({ sessions: [] })
   })
 
   it('returns 500 on DB error', async () => {
@@ -447,23 +461,31 @@ describe('getSessions', () => {
 describe('revokeSession', () => {
   beforeEach(() => jest.clearAllMocks())
 
+  const VALID_JTI = '550e8400-e29b-41d4-a716-446655440001'
   const userReq = (jti: string) =>
     ({ user: { id: 'user-id-1', role: 'member' as const }, params: { jti } }) as unknown as AuthRequest
+
+  it('returns 400 when jti is not a valid UUID', async () => {
+    const res = mockRes()
+    await revokeSession(userReq('not-a-uuid'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid session ID' })
+  })
 
   it('returns 404 when session not found or belongs to another user', async () => {
     ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue(null)
     const res = mockRes()
-    await revokeSession(userReq('unknown-jti'), res)
+    await revokeSession(userReq(VALID_JTI), res)
     expect(res.status).toHaveBeenCalledWith(404)
     expect(res.json).toHaveBeenCalledWith({ message: 'Session not found' })
   })
 
   it('revokes session and returns success', async () => {
-    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({ jti: 'jti-1' })
+    ;(RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValue({ jti: VALID_JTI })
     const res = mockRes()
-    await revokeSession(userReq('jti-1'), res)
+    await revokeSession(userReq(VALID_JTI), res)
     expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith(
-      { jti: 'jti-1', userId: 'user-id-1', revokedAt: { $exists: false } },
+      { jti: VALID_JTI, userId: 'user-id-1', revokedAt: { $exists: false } },
       { revokedAt: expect.any(Date) },
     )
     expect(res.json).toHaveBeenCalledWith({ message: 'Session revoked' })
@@ -472,7 +494,7 @@ describe('revokeSession', () => {
   it('returns 500 on DB error', async () => {
     ;(RefreshToken.findOneAndUpdate as jest.Mock).mockRejectedValue(new Error('DB error'))
     const res = mockRes()
-    await revokeSession(userReq('jti-1'), res)
+    await revokeSession(userReq(VALID_JTI), res)
     expect(res.status).toHaveBeenCalledWith(500)
     expect(res.json).toHaveBeenCalledWith({ message: 'Server error' })
   })
