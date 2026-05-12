@@ -13,7 +13,7 @@ const upload = multer({
     if (ext === 'fit' || ext === 'gpx') {
       cb(null, true)
     } else {
-      cb(new Error('Only .fit and .gpx files are supported'))
+      cb(null, false)
     }
   },
 })

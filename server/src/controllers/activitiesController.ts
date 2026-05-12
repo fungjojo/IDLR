@@ -2,6 +2,7 @@ import type { Response } from 'express'
 import { Activity } from '../models/Activity'
 import { parseFitBuffer } from '../services/fitParser'
 import { parseGpxBuffer } from '../services/gpxParser'
+import type { ActivityData } from '../services/activityTypes'
 import { logger } from '../utils/logger'
 import type { AuthRequest } from '../middleware/auth'
 
@@ -18,7 +19,7 @@ export async function uploadActivity(req: AuthRequest, res: Response): Promise<v
     return
   }
 
-  let activityData
+  let activityData: ActivityData
   try {
     if (ext === 'fit') {
       activityData = await parseFitBuffer(file.buffer, file.originalname)

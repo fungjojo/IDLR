@@ -38,7 +38,10 @@ function parseTrkpt(xml: string): Trkpt | null {
 export function parseGpxBuffer(buffer: Buffer, filename: string): ActivityData {
   const xml = buffer.toString('utf-8')
 
-  const nameText = extractText(xml, 'name')
+  // Extract name from <trk> block specifically — Garmin files put device/app name in
+  // <metadata><name> before the track, so matching the first <name> returns the wrong value.
+  const trkBlock = xml.match(/<trk[\s\S]*?<\/trk>/)?.[0] ?? ''
+  const nameText = extractText(trkBlock, 'name')
   const baseName = nameText || filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')
 
   // Extract all <trkpt> blocks

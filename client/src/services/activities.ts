@@ -16,7 +16,6 @@ export async function uploadActivity(file: File): Promise<Activity> {
   formData.append('file', file)
   const response = await api.post<Activity>('/api/activities/upload', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
       'Idempotency-Key': crypto.randomUUID(),
     },
   })
