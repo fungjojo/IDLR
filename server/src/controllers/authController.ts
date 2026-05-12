@@ -290,6 +290,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
         email: user.email,
         role: user.role,
         maxHR: user.maxHR,
+        createdAt: user.createdAt,
       },
     })
   } catch (err) {

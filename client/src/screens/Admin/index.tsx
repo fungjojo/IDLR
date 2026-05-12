@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { setMembers, removeMember, setLoading, setError } from '../../store/adminSlice'
-import { fetchMembers, deleteMember } from '../../services/users'
+import { setMembers, addMember, removeMember, setLoading, setError } from '../../store/adminSlice'
+import { fetchMembers, deleteMember, createMember } from '../../services/users'
 import styles from './Admin.module.css'
+
+const DEFAULT_MAX_HR = 190
 
 export default function Admin() {
   const dispatch = useAppDispatch()
@@ -10,6 +12,14 @@ export default function Admin() {
   const currentUserId = useAppSelector((state) => state.auth.user?.id)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  const [showForm, setShowForm] = useState(false)
+  const [formName, setFormName] = useState('')
+  const [formEmail, setFormEmail] = useState('')
+  const [formPassword, setFormPassword] = useState('')
+  const [formMaxHR, setFormMaxHR] = useState(String(DEFAULT_MAX_HR))
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -40,12 +50,130 @@ export default function Admin() {
     }
   }
 
+  const resetForm = () => {
+    setFormName('')
+    setFormEmail('')
+    setFormPassword('')
+    setFormMaxHR(String(DEFAULT_MAX_HR))
+    setFormError(null)
+  }
+
+  const handleCancelForm = () => {
+    resetForm()
+    setShowForm(false)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError(null)
+
+    const maxHR = Number(formMaxHR)
+    if (!formName.trim() || !formEmail.trim() || !formPassword) {
+      setFormError('Name, email and password are required')
+      return
+    }
+    if (isNaN(maxHR) || maxHR < 100 || maxHR > 250) {
+      setFormError('Max HR must be between 100 and 250')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const member = await createMember({ name: formName.trim(), email: formEmail.trim(), password: formPassword, maxHR })
+      dispatch(addMember(member))
+      resetForm()
+      setShowForm(false)
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 409) {
+        setFormError('Email already in use')
+      } else {
+        setFormError('Failed to create member')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Members</h1>
-        <p className={styles.subtitle}>Manage team members</p>
+        <div>
+          <h1 className={styles.title}>Members</h1>
+          <p className={styles.subtitle}>Manage team members</p>
+        </div>
+        {!showForm && (
+          <button className={styles.addButton} onClick={() => setShowForm(true)}>
+            Add Member
+          </button>
+        )}
       </div>
+
+      {showForm && (
+        <form className={styles.form} onSubmit={handleSubmit} noValidate>
+          <h2 className={styles.formTitle}>New Member</h2>
+          {formError && <p className={styles.error}>{formError}</p>}
+          <div className={styles.fields}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="member-name">Name</label>
+              <input
+                id="member-name"
+                className={styles.input}
+                type="text"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Full name"
+                disabled={submitting}
+              />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="member-email">Email</label>
+              <input
+                id="member-email"
+                className={styles.input}
+                type="email"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="email@example.com"
+                disabled={submitting}
+              />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="member-password">Password</label>
+              <input
+                id="member-password"
+                className={styles.input}
+                type="password"
+                value={formPassword}
+                onChange={(e) => setFormPassword(e.target.value)}
+                placeholder="Min 8 characters"
+                disabled={submitting}
+              />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="member-maxhr">Max HR</label>
+              <input
+                id="member-maxhr"
+                className={styles.input}
+                type="number"
+                value={formMaxHR}
+                onChange={(e) => setFormMaxHR(e.target.value)}
+                min={100}
+                max={250}
+                disabled={submitting}
+              />
+            </div>
+          </div>
+          <div className={styles.formActions}>
+            <button type="submit" className={styles.submitButton} disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create Member'}
+            </button>
+            <button type="button" className={styles.cancelButton} onClick={handleCancelForm} disabled={submitting}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       {error && <p className={styles.error}>{error}</p>}
 

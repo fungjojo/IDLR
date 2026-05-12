@@ -20,6 +20,9 @@ const adminSlice = createSlice({
     setMembers(state, action: PayloadAction<Member[]>) {
       state.members = action.payload
     },
+    addMember(state, action: PayloadAction<Member>) {
+      state.members.unshift(action.payload)
+    },
     removeMember(state, action: PayloadAction<string>) {
       state.members = state.members.filter((m) => m.id !== action.payload)
     },
@@ -32,5 +35,5 @@ const adminSlice = createSlice({
   },
 })
 
-export const { setMembers, removeMember, setLoading, setError } = adminSlice.actions
+export const { setMembers, addMember, removeMember, setLoading, setError } = adminSlice.actions
 export default adminSlice.reducer
