@@ -5,6 +5,9 @@ import jwt from 'jsonwebtoken'
 import { User } from '../models/User'
 import { RefreshToken } from '../models/RefreshToken'
 import { type AuthRequest } from '../middleware/auth'
+import { logger } from '../utils/logger'
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const BCRYPT_ROUNDS = 12
 const MAX_PASSWORD_LENGTH = 72
@@ -89,6 +92,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)
+      logger.warn({ event: 'auth.login.locked', email: normalisedEmail, retryAfter }, 'Login attempt on locked account')
       res.set('Retry-After', String(retryAfter))
       res.status(423).json({ message: 'Account temporarily locked. Try again later.', retryAfter })
       return
@@ -100,8 +104,10 @@ export async function login(req: Request, res: Response): Promise<void> {
       const update: { loginAttempts: number; lockedUntil?: Date } = { loginAttempts: attempts }
       if (attempts >= MAX_LOGIN_ATTEMPTS) {
         update.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS)
+        logger.warn({ event: 'auth.login.lockout_triggered', email: normalisedEmail, attempts }, 'Account locked out')
       }
       await User.updateOne({ _id: user._id }, update)
+      logger.warn({ event: 'auth.login.failure', email: normalisedEmail }, 'Failed login attempt')
       res.status(401).json({ message: 'Invalid credentials' })
       return
     }
@@ -112,6 +118,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     const userId = user._id.toString()
     const { accessToken, refreshToken, refreshJti } = issueTokenPair(userId, user.role)
+    logger.info({ event: 'auth.login.success', userId, role: user.role }, 'User logged in')
 
     await RefreshToken.create({
       jti: refreshJti,
@@ -131,7 +138,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    console.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -196,6 +203,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 
     res.cookie(ACCESS_COOKIE, accessToken, accessCookieOptions())
     res.cookie(REFRESH_COOKIE, newRefreshToken, refreshCookieOptions())
+    logger.info({ event: 'auth.refresh.success', userId }, 'Token refreshed')
     res.json({ message: 'Token refreshed' })
   } catch {
     res.status(401).json({ message: 'Invalid or expired token' })
@@ -217,10 +225,12 @@ export async function logout(req: Request, res: Response): Promise<void> {
         'jti' in raw &&
         typeof (raw as Record<string, unknown>).jti === 'string'
       ) {
+        const { jti, id: userId } = raw as { jti: string; id?: string }
         await RefreshToken.findOneAndUpdate(
-          { jti: (raw as { jti: string }).jti },
+          { jti },
           { revokedAt: new Date() },
         )
+        logger.info({ event: 'auth.logout', userId: userId ?? 'unknown' }, 'User logged out')
       }
     } catch {
       // Best-effort revocation — always clear cookies
@@ -271,6 +281,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
     const user = await User.create({ name, email: normalisedEmail, passwordHash, role: 'member', maxHR })
+    logger.info({ event: 'auth.register.success', userId: user._id.toString(), email: normalisedEmail, role: 'member' }, 'User registered')
 
     res.status(201).json({
       user: {
@@ -282,7 +293,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    console.error(err)
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -304,7 +315,45 @@ export async function me(req: AuthRequest, res: Response): Promise<void> {
       },
     })
   } catch (err) {
-    console.error(err)
+    logger.error({ err }, 'Server error')
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export async function getSessions(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const sessions = await RefreshToken.find(
+      { userId: req.user!.id, revokedAt: { $exists: false }, expiresAt: { $gt: new Date() } },
+      { jti: 1, createdAt: 1, expiresAt: 1, _id: 0 },
+    ).sort({ createdAt: -1 })
+    res.json({
+      sessions: sessions.map((s) => ({ jti: s.jti, createdAt: s.createdAt, expiresAt: s.expiresAt })),
+    })
+  } catch (err) {
+    logger.error({ err }, 'Server error')
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export async function revokeSession(req: AuthRequest, res: Response): Promise<void> {
+  const jti = req.params.jti as string
+  if (!UUID_REGEX.test(jti)) {
+    res.status(400).json({ message: 'Invalid session ID' })
+    return
+  }
+  try {
+    const result = await RefreshToken.findOneAndUpdate(
+      { jti, userId: req.user!.id, revokedAt: { $exists: false } },
+      { revokedAt: new Date() },
+    )
+    if (!result) {
+      res.status(404).json({ message: 'Session not found' })
+      return
+    }
+    logger.info({ event: 'auth.session.revoked', userId: req.user!.id, jti }, 'Session revoked')
+    res.json({ message: 'Session revoked' })
+  } catch (err) {
+    logger.error({ err }, 'Server error')
     res.status(500).json({ message: 'Server error' })
   }
 }

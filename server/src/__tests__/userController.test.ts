@@ -5,6 +5,7 @@ import { User } from '../models/User'
 import type { AuthRequest } from '../middleware/auth'
 
 jest.mock('../models/User')
+jest.mock('../utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
 jest.mock('mongoose', () => ({
   ...jest.requireActual('mongoose'),
   Types: {

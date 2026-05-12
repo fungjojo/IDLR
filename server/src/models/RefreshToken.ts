@@ -5,6 +5,7 @@ export interface IRefreshToken extends Document {
   userId: Types.ObjectId
   expiresAt: Date
   revokedAt?: Date
+  createdAt: Date
 }
 
 const refreshTokenSchema = new Schema<IRefreshToken>(
