@@ -156,6 +156,17 @@ describe('Admin — invite form', () => {
     expect(screen.getByText('Name, email and password are required')).toBeInTheDocument()
   })
 
+  it('shows validation error when password is too short', async () => {
+    renderAdmin()
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Add Member' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Carol' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'carol@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Member' }))
+    expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
+  })
+
   it('shows validation error when Max HR is out of range', async () => {
     renderAdmin()
     await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
@@ -168,7 +179,19 @@ describe('Admin — invite form', () => {
     expect(screen.getByText('Max HR must be between 100 and 250')).toBeInTheDocument()
   })
 
-  it('adds new member to the list and closes form on success', async () => {
+  it('shows validation error when Max HR field is cleared', async () => {
+    renderAdmin()
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Add Member' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Carol' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'carol@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Max HR'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Member' }))
+    expect(screen.getByText('Max HR must be between 100 and 250')).toBeInTheDocument()
+  })
+
+  it('adds new member to the list and closes form on success (default Max HR)', async () => {
     const newMember: usersService.Member = {
       id: 'user-id-3', name: 'Carol', email: 'carol@example.com', role: 'member', maxHR: 190, createdAt: '2026-01-03T00:00:00.000Z',
     }
@@ -187,6 +210,25 @@ describe('Admin — invite form', () => {
     })
   })
 
+  it('submits with a non-default Max HR value', async () => {
+    const newMember: usersService.Member = {
+      id: 'user-id-3', name: 'Carol', email: 'carol@example.com', role: 'member', maxHR: 175, createdAt: '2026-01-03T00:00:00.000Z',
+    }
+    mockedCreateMember.mockResolvedValue(newMember)
+    renderAdmin()
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Add Member' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Carol' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'carol@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText('Max HR'), { target: { value: '175' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Member' }))
+    await waitFor(() => expect(screen.getByText('Carol')).toBeInTheDocument())
+    expect(mockedCreateMember).toHaveBeenCalledWith({
+      name: 'Carol', email: 'carol@example.com', password: 'password123', maxHR: 175,
+    })
+  })
+
   it('shows email-in-use error on 409 response', async () => {
     mockedCreateMember.mockRejectedValue({ response: { status: 409 } })
     renderAdmin()
@@ -199,8 +241,20 @@ describe('Admin — invite form', () => {
     await waitFor(() => expect(screen.getByText('Email already in use')).toBeInTheDocument())
   })
 
-  it('shows generic error on non-409 failure', async () => {
-    mockedCreateMember.mockRejectedValue(new Error('Server error'))
+  it('shows server error message from response body on 4xx', async () => {
+    mockedCreateMember.mockRejectedValue({ response: { status: 400, data: { message: 'Password must be at least 8 characters' } } })
+    renderAdmin()
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Add Member' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Carol' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'carol@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create Member' }))
+    await waitFor(() => expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument())
+  })
+
+  it('shows generic error when no response body message', async () => {
+    mockedCreateMember.mockRejectedValue(new Error('Network error'))
     renderAdmin()
     await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Add Member' }))

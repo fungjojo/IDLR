@@ -2,21 +2,33 @@
 
 exports[`Admin renders member list after fetch 1`] = `
 <div>
-  <div>
-    <div>
+  <div
+    class="container"
+  >
+    <div
+      class="header"
+    >
       <div>
-        <h1>
+        <h1
+          class="title"
+        >
           Members
         </h1>
-        <p>
+        <p
+          class="subtitle"
+        >
           Manage team members
         </p>
       </div>
-      <button>
+      <button
+        class="addButton"
+      >
         Add Member
       </button>
     </div>
-    <table>
+    <table
+      class="table"
+    >
       <thead>
         <tr>
           <th>
@@ -44,7 +56,7 @@ exports[`Admin renders member list after fetch 1`] = `
           </td>
           <td>
             <span
-              class="undefined undefined"
+              class="badge badgeAdmin"
             >
               admin
             </span>
@@ -63,7 +75,7 @@ exports[`Admin renders member list after fetch 1`] = `
           </td>
           <td>
             <span
-              class="undefined undefined"
+              class="badge badgeMember"
             >
               member
             </span>
@@ -72,8 +84,12 @@ exports[`Admin renders member list after fetch 1`] = `
             180
           </td>
           <td>
-            <div>
-              <button>
+            <div
+              class="actions"
+            >
+              <button
+                class="deleteButton"
+              >
                 Delete
               </button>
             </div>

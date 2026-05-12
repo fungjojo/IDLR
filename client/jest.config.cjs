@@ -4,7 +4,8 @@ module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
-    '\\.(css|less|scss|svg|png)$': '<rootDir>/src/__mocks__/fileMock.cjs',
+    '\\.(css|less|scss)$': 'identity-obj-proxy',
+    '\\.(svg|png)$': '<rootDir>/src/__mocks__/fileMock.cjs',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   globals: {
