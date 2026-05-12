@@ -1,12 +1,12 @@
-import { Router, type Request, type Response } from 'express'
+import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { idempotency } from '../middleware/idempotency'
+import { stravaConnect, stravaCallback, stravaSync } from '../controllers/stravaController'
 
 const router = Router()
 
-// Idempotency applied here — controller will be implemented in step 6
-router.post('/sync', requireAuth, idempotency, (_req: Request, res: Response) => {
-  res.status(501).json({ message: 'Not implemented' })
-})
+router.get('/connect', requireAuth, stravaConnect)
+router.get('/callback', requireAuth, stravaCallback)
+router.post('/sync', requireAuth, idempotency, stravaSync)
 
 export default router

@@ -301,7 +301,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
 
 export async function me(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const user = await User.findById(req.user?.id).select('name email role maxHR')
+    const user = await User.findById(req.user?.id).select('name email role maxHR stravaAthleteId')
     if (!user) {
       res.status(401).json({ message: 'User not found' })
       return
@@ -313,6 +313,7 @@ export async function me(req: AuthRequest, res: Response): Promise<void> {
         email: user.email,
         role: user.role,
         maxHR: user.maxHR,
+        stravaAthleteId: user.stravaAthleteId,
       },
     })
   } catch (err) {
