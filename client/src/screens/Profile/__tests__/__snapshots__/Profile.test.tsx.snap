@@ -1,0 +1,31 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Profile screen matches snapshot when not connected 1`] = `
+<DocumentFragment>
+  <div
+    class="container"
+  >
+    <h1
+      class="title"
+    >
+      Profile
+    </h1>
+    <div
+      class="section"
+    >
+      <h2
+        class="sectionTitle"
+      >
+        Strava
+      </h2>
+      <a
+        class="connectButton"
+        data-testid="strava-connect-link"
+        href="/api/strava/connect"
+      >
+        Connect Strava
+      </a>
+    </div>
+  </div>
+</DocumentFragment>
+`;

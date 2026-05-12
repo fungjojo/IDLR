@@ -4,4 +4,5 @@ export interface BaseUser {
   email: string
   role: 'admin' | 'member'
   maxHR: number
+  stravaAthleteId?: number
 }
