@@ -4,6 +4,8 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import authRoutes from './routes/auth'
 import userRoutes from './routes/users'
+import activitiesRoutes from './routes/activities'
+import stravaRoutes from './routes/strava'
 
 const app = express()
 
@@ -23,5 +25,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/activities', activitiesRoutes)
+app.use('/api/strava', stravaRoutes)
 
 export default app
