@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Activities screen matches snapshot 1`] = `
+<DocumentFragment>
+  <div
+    class="container"
+  >
+    <h1
+      class="title"
+    >
+      Activities
+    </h1>
+    <div
+      aria-label="Upload activity file"
+      class="dropzone"
+      role="button"
+    >
+      <p
+        class="dropzoneLabel"
+      >
+        Drop a .fit or .gpx file here
+      </p>
+      <p
+        class="dropzoneHint"
+      >
+        or click to browse
+      </p>
+      <input
+        accept=".fit,.gpx"
+        class="hiddenInput"
+        data-testid="file-input"
+        type="file"
+      />
+    </div>
+  </div>
+</DocumentFragment>
+`;

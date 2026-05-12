@@ -1,0 +1,83 @@
+.container {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 2.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  background-color: #f8fafc;
+}
+
+.dropzone:hover,
+.dropzoneActive {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.dropzoneUploading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dropzoneLabel {
+  font-size: 1rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.dropzoneHint {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+
+.success {
+  color: #16a34a;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+
+.recentTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 2rem 0 0.75rem;
+}
+
+.activityCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  background: #fff;
+}
+
+.activityName {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.activityMeta {
+  font-size: 0.8rem;
+  color: #64748b;
+}
