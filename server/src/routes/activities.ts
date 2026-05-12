@@ -1,12 +1,23 @@
-import { Router, type Request, type Response } from 'express'
+import { Router } from 'express'
+import multer from 'multer'
 import { requireAuth } from '../middleware/auth'
 import { idempotency } from '../middleware/idempotency'
+import { uploadActivity } from '../controllers/activitiesController'
 
 const router = Router()
-
-// Idempotency applied here — controller will be implemented in step 5
-router.post('/upload', requireAuth, idempotency, (_req: Request, res: Response) => {
-  res.status(501).json({ message: 'Not implemented' })
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = file.originalname.split('.').pop()?.toLowerCase()
+    if (ext === 'fit' || ext === 'gpx') {
+      cb(null, true)
+    } else {
+      cb(null, false)
+    }
+  },
 })
+
+router.post('/upload', requireAuth, idempotency, upload.single('file'), uploadActivity)
 
 export default router
