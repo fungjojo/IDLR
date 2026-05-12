@@ -12,8 +12,8 @@ const idempotencyKeySchema = new Schema<IIdempotencyKey>(
   {
     key: { type: String, required: true },
     userId: { type: String, required: true },
-    statusCode: { type: Number, required: true },
-    body: { type: String, required: true },
+    statusCode: { type: Number, default: 0 },
+    body: { type: String, default: '' },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 )

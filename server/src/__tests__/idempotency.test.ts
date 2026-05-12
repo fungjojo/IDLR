@@ -6,9 +6,11 @@ import type { AuthRequest } from '../middleware/auth'
 jest.mock('../models/IdempotencyKey')
 jest.mock('../utils/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
 
+const VALID_KEY = '550e8400-e29b-41d4-a716-446655440001'
+
 function mockReq(overrides: Partial<AuthRequest> = {}): AuthRequest {
   return {
-    headers: {},
+    headers: { 'idempotency-key': VALID_KEY },
     user: { id: 'user-id-1', role: 'member' as const },
     ...overrides,
   } as AuthRequest
@@ -25,70 +27,190 @@ function mockRes(): Response {
 describe('idempotency middleware', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it('calls next() and skips cache when no Idempotency-Key header is present', async () => {
-    const req = mockReq({ headers: {} })
-    const res = mockRes()
-    const next = jest.fn() as NextFunction
+  describe('header validation', () => {
+    it('calls next() and skips cache when no Idempotency-Key header is present', async () => {
+      const req = mockReq({ headers: {} })
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
 
-    await idempotency(req, res, next)
+      await idempotency(req, res, next)
 
-    expect(next).toHaveBeenCalled()
-    expect(IdempotencyKey.findOne).not.toHaveBeenCalled()
-    expect(res.json).not.toHaveBeenCalled()
-  })
+      expect(next).toHaveBeenCalled()
+      expect(IdempotencyKey.create).not.toHaveBeenCalled()
+      expect(res.json).not.toHaveBeenCalled()
+    })
 
-  it('returns cached response when key has been seen before (cache hit)', async () => {
-    const cached = { statusCode: 201, body: JSON.stringify({ message: 'ok' }) }
-    ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue(cached)
+    it('returns 400 when Idempotency-Key is not a valid UUID v4', async () => {
+      const req = mockReq({ headers: { 'idempotency-key': 'not-a-uuid' } })
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
 
-    const req = mockReq({ headers: { 'idempotency-key': 'key-abc' } })
-    const res = mockRes()
-    const next = jest.fn() as NextFunction
+      await idempotency(req, res, next)
 
-    await idempotency(req, res, next)
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({ message: 'Idempotency-Key must be a valid UUID v4' })
+      expect(next).not.toHaveBeenCalled()
+    })
 
-    expect(IdempotencyKey.findOne).toHaveBeenCalledWith({ key: 'key-abc', userId: 'user-id-1' })
-    expect(res.status).toHaveBeenCalledWith(201)
-    expect(res.json).toHaveBeenCalledWith({ message: 'ok' })
-    expect(next).not.toHaveBeenCalled()
-  })
+    it('returns 400 when Idempotency-Key exceeds max length', async () => {
+      const req = mockReq({ headers: { 'idempotency-key': 'a'.repeat(37) } })
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
 
-  it('calls next() and wraps res.json to store the response on cache miss', async () => {
-    ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue(null)
-    ;(IdempotencyKey.create as jest.Mock).mockResolvedValue({})
+      await idempotency(req, res, next)
 
-    const req = mockReq({ headers: { 'idempotency-key': 'key-xyz' } })
-    const res = mockRes()
-    const next = jest.fn() as NextFunction
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(next).not.toHaveBeenCalled()
+    })
 
-    await idempotency(req, res, next)
+    it('calls next() and skips cache when req.user is not set', async () => {
+      const req = mockReq({ user: undefined })
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
 
-    expect(next).toHaveBeenCalled()
+      await idempotency(req, res, next)
 
-    // Simulate the handler calling res.json
-    res.statusCode = 201
-    res.json({ id: 'new-resource' })
-
-    expect(IdempotencyKey.create).toHaveBeenCalledWith({
-      key: 'key-xyz',
-      userId: 'user-id-1',
-      statusCode: 201,
-      body: JSON.stringify({ id: 'new-resource' }),
+      expect(next).toHaveBeenCalled()
+      expect(IdempotencyKey.create).not.toHaveBeenCalled()
     })
   })
 
-  it('still calls next() even if IdempotencyKey.create throws', async () => {
-    ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue(null)
-    ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(new Error('DB error'))
+  describe('cache miss (first request)', () => {
+    it('inserts a placeholder, calls next(), and wraps res.json to store the response', async () => {
+      const fakeRecord = { _id: 'record-id-1' }
+      ;(IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord)
+      ;(IdempotencyKey.updateOne as jest.Mock).mockResolvedValue({})
 
-    const req = mockReq({ headers: { 'idempotency-key': 'key-xyz' } })
-    const res = mockRes()
-    const next = jest.fn() as NextFunction
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
 
-    await idempotency(req, res, next)
-    expect(next).toHaveBeenCalled()
+      await idempotency(req, res, next)
+      expect(next).toHaveBeenCalled()
 
-    // Simulate handler completing — should not throw even if create fails
-    await expect(async () => { res.json({ id: 'new-resource' }) }).not.toThrow()
+      res.statusCode = 201
+      res.json({ id: 'new-resource' })
+
+      expect(IdempotencyKey.updateOne).toHaveBeenCalledWith(
+        { _id: 'record-id-1' },
+        { statusCode: 201, body: JSON.stringify({ id: 'new-resource' }) },
+      )
+    })
+
+    it('deletes placeholder and does not store non-2xx responses', async () => {
+      const fakeRecord = { _id: 'record-id-1' }
+      ;(IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord)
+      ;(IdempotencyKey.deleteOne as jest.Mock).mockResolvedValue({})
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+
+      res.statusCode = 400
+      res.json({ message: 'Bad request' })
+
+      expect(IdempotencyKey.deleteOne).toHaveBeenCalledWith({ _id: 'record-id-1' })
+      expect(IdempotencyKey.updateOne).not.toHaveBeenCalled()
+    })
+
+    it('forwards error to next() when create fails with a non-duplicate-key error', async () => {
+      const dbErr = new Error('Connection timeout')
+      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dbErr)
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+
+      expect(next).toHaveBeenCalledWith(dbErr)
+    })
+
+    it('logs but does not crash when updateOne fails with a non-duplicate error', async () => {
+      const fakeRecord = { _id: 'record-id-1' }
+      ;(IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord)
+      ;(IdempotencyKey.updateOne as jest.Mock).mockRejectedValue(new Error('Write failed'))
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+      expect(next).toHaveBeenCalled()
+
+      // Should not throw when handler calls res.json
+      expect(() => { res.json({ id: 'new-resource' }) }).not.toThrow()
+    })
+  })
+
+  describe('cache hit (duplicate request)', () => {
+    it('returns cached response when key was previously completed', async () => {
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
+      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
+      ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue({
+        statusCode: 201,
+        body: JSON.stringify({ message: 'ok' }),
+      })
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+
+      expect(res.status).toHaveBeenCalledWith(201)
+      expect(res.json).toHaveBeenCalledWith({ message: 'ok' })
+      expect(next).not.toHaveBeenCalled()
+    })
+
+    it('returns 409 when key exists but response is still pending (statusCode 0)', async () => {
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
+      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
+      ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue({ statusCode: 0, body: '' })
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+
+      expect(res.status).toHaveBeenCalledWith(409)
+      expect(res.json).toHaveBeenCalledWith({ message: 'Request already in progress' })
+    })
+
+    it('returns 500 when cached body is corrupt JSON', async () => {
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
+      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
+      ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue({
+        statusCode: 201,
+        body: 'not-valid-json{{{',
+      })
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+
+      expect(res.status).toHaveBeenCalledWith(500)
+      expect(res.json).toHaveBeenCalledWith({ message: 'Server error' })
+    })
+
+    it('forwards error to next() when findOne throws after E11000', async () => {
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
+      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
+      const findErr = new Error('DB unreachable')
+      ;(IdempotencyKey.findOne as jest.Mock).mockRejectedValue(findErr)
+
+      const req = mockReq()
+      const res = mockRes()
+      const next = jest.fn() as NextFunction
+
+      await idempotency(req, res, next)
+
+      expect(next).toHaveBeenCalledWith(findErr)
+    })
   })
 })
