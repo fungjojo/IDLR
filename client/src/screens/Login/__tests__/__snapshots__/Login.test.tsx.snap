@@ -2,37 +2,55 @@
 
 exports[`Login renders the login form 1`] = `
 <div>
-  <div>
-    <div>
-      <h1>
+  <div
+    class="container"
+  >
+    <div
+      class="card"
+    >
+      <h1
+        class="title"
+      >
         IDLR
       </h1>
-      <p>
+      <p
+        class="subtitle"
+      >
         Sign in to your account
       </p>
-      <form>
-        <div>
+      <form
+        class="form"
+      >
+        <div
+          class="field"
+        >
           <label
+            class="label"
             for="email"
           >
             Email
           </label>
           <input
             autocomplete="email"
+            class="input"
             id="email"
             required=""
             type="email"
             value=""
           />
         </div>
-        <div>
+        <div
+          class="field"
+        >
           <label
+            class="label"
             for="password"
           >
             Password
           </label>
           <input
             autocomplete="current-password"
+            class="input"
             id="password"
             required=""
             type="password"
@@ -40,6 +58,7 @@ exports[`Login renders the login form 1`] = `
           />
         </div>
         <button
+          class="button"
           type="submit"
         >
           Sign in

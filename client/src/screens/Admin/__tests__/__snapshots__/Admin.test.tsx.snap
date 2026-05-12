@@ -1,0 +1,102 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Admin renders member list after fetch 1`] = `
+<div>
+  <div
+    class="container"
+  >
+    <div
+      class="header"
+    >
+      <div>
+        <h1
+          class="title"
+        >
+          Members
+        </h1>
+        <p
+          class="subtitle"
+        >
+          Manage team members
+        </p>
+      </div>
+      <button
+        class="addButton"
+      >
+        Add Member
+      </button>
+    </div>
+    <table
+      class="table"
+    >
+      <thead>
+        <tr>
+          <th>
+            Name
+          </th>
+          <th>
+            Email
+          </th>
+          <th>
+            Role
+          </th>
+          <th>
+            Max HR
+          </th>
+          <th />
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            Alice
+          </td>
+          <td>
+            alice@example.com
+          </td>
+          <td>
+            <span
+              class="badge badgeAdmin"
+            >
+              admin
+            </span>
+          </td>
+          <td>
+            185
+          </td>
+          <td />
+        </tr>
+        <tr>
+          <td>
+            Bob
+          </td>
+          <td>
+            bob@example.com
+          </td>
+          <td>
+            <span
+              class="badge badgeMember"
+            >
+              member
+            </span>
+          </td>
+          <td>
+            180
+          </td>
+          <td>
+            <div
+              class="actions"
+            >
+              <button
+                class="deleteButton"
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+`;
