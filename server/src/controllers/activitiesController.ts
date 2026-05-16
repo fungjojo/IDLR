@@ -46,8 +46,10 @@ export async function uploadActivity(req: AuthRequest, res: Response): Promise<v
 }
 
 export async function getActivities(req: AuthRequest, res: Response): Promise<void> {
-  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10))
-  const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? '10'), 10)))
+  const rawPage = parseInt(String(req.query.page ?? '1'), 10)
+  const rawLimit = parseInt(String(req.query.limit ?? '10'), 10)
+  const page = Math.max(1, Number.isNaN(rawPage) ? 1 : rawPage)
+  const limit = Math.min(50, Math.max(1, Number.isNaN(rawLimit) ? 10 : rawLimit))
   const skip = (page - 1) * limit
 
   try {

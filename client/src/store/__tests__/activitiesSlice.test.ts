@@ -96,6 +96,7 @@ describe('fetchActivitiesThunk', () => {
   beforeEach(() => jest.clearAllMocks())
 
   it('sets loading true while pending', () => {
+    mockFetchActivities.mockReturnValue(new Promise(() => {}))
     const store = makeStore()
     store.dispatch(fetchActivitiesThunk({ page: 1, limit: 10 }))
     expect(store.getState().activities.loading).toBe(true)
@@ -144,11 +145,19 @@ describe('fetchActivityThunk', () => {
 describe('deleteActivityThunk', () => {
   beforeEach(() => jest.clearAllMocks())
 
+  it('sets loading true while pending', () => {
+    mockDeleteActivity.mockReturnValue(new Promise(() => {}))
+    const store = makeStore()
+    store.dispatch(deleteActivityThunk('act-1'))
+    expect(store.getState().activities.loading).toBe(true)
+  })
+
   it('removes item from list on fulfilled', async () => {
     mockDeleteActivity.mockResolvedValue(undefined)
     const store = makeStore({ items: [mockActivity] })
     await store.dispatch(deleteActivityThunk('act-1'))
     expect(store.getState().activities.items).toHaveLength(0)
+    expect(store.getState().activities.loading).toBe(false)
   })
 
   it('clears selected if it matches deleted id', async () => {
@@ -156,5 +165,14 @@ describe('deleteActivityThunk', () => {
     const store = makeStore({ items: [mockActivity], selected: mockActivity })
     await store.dispatch(deleteActivityThunk('act-1'))
     expect(store.getState().activities.selected).toBeNull()
+  })
+
+  it('sets error on rejected', async () => {
+    mockDeleteActivity.mockRejectedValue(new Error('delete failed'))
+    const store = makeStore({ items: [mockActivity] })
+    await store.dispatch(deleteActivityThunk('act-1'))
+    expect(store.getState().activities.error).toBe('delete failed')
+    expect(store.getState().activities.loading).toBe(false)
+    expect(store.getState().activities.items).toHaveLength(1)
   })
 })

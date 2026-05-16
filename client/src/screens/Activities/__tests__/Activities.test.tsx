@@ -110,7 +110,7 @@ describe('Activities screen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/activities/act-1')
   })
 
-  it('shows pagination when pages >= 1', () => {
+  it('shows pagination when pages > 1', () => {
     renderScreen({ items: [MOCK_ACTIVITY], page: 1, pages: 3 })
     expect(screen.getByText('1 of 3')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()

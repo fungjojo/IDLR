@@ -166,6 +166,15 @@ describe('getActivities', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pages: 0 }))
   })
 
+  it('falls back to page 1 and limit 10 when params are non-numeric', async () => {
+    mockFind.mockReturnValue(makeChain([]))
+    mockCountDocuments.mockResolvedValue(0)
+    const req = makeReq({ query: { page: 'abc', limit: 'xyz' } })
+    const res = makeRes()
+    await getActivities(req, res)
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
+  })
+
   it('returns 500 on database error', async () => {
     mockFind.mockReturnValue({
       sort: jest.fn().mockReturnThis(),

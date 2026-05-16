@@ -44,7 +44,7 @@ export default function ActivityDetail() {
       await dispatch(deleteActivityThunk(selected._id)).unwrap()
       navigate(ROUTES.ACTIVITIES)
     } catch {
-      // thunk rejected — stay on page (slice error state handles the message)
+      setConfirming(false)
     }
   }
 
@@ -68,8 +68,8 @@ export default function ActivityDetail() {
         {confirming ? (
           <div className={styles.confirmRow}>
             <span className={styles.confirmMsg}>Delete this activity?</span>
-            <button className={styles.confirmBtn} onClick={handleDelete} aria-label="Confirm">
-              Confirm
+            <button className={styles.confirmBtn} onClick={handleDelete} disabled={loading} aria-label="Confirm">
+              {loading ? 'Deleting…' : 'Confirm'}
             </button>
             <button
               className={styles.cancelBtn}

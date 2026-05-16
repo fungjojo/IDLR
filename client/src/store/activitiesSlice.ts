@@ -70,12 +70,10 @@ const activitiesSlice = createSlice({
       })
       .addCase(fetchActivitiesThunk.fulfilled, (state, action) => {
         state.loading = false
-        if (action.payload) {
-          state.items = action.payload.activities
-          state.total = action.payload.total
-          state.page = action.payload.page
-          state.pages = action.payload.pages
-        }
+        state.items = action.payload.activities
+        state.total = action.payload.total
+        state.page = action.payload.page
+        state.pages = action.payload.pages
       })
       .addCase(fetchActivitiesThunk.rejected, (state, action) => {
         state.loading = false
@@ -94,11 +92,20 @@ const activitiesSlice = createSlice({
         state.loading = false
         state.error = action.error.message ?? 'Failed to fetch activity'
       })
+      .addCase(deleteActivityThunk.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
       .addCase(deleteActivityThunk.fulfilled, (state, action) => {
+        state.loading = false
         state.items = state.items.filter((a) => a._id !== action.payload)
         if (state.selected?._id === action.payload) {
           state.selected = null
         }
+      })
+      .addCase(deleteActivityThunk.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message ?? 'Failed to delete activity'
       })
   },
 })
