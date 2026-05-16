@@ -3,7 +3,12 @@ import { MemoryRouter } from 'react-router-dom'
 import ActivityDetail from '../index'
 import type { Activity } from '../../../types/activity'
 
-const mockDispatch = jest.fn().mockReturnValue(Promise.resolve({ payload: undefined }))
+const makeDispatchResult = (value: unknown = undefined) =>
+  Object.assign(Promise.resolve({ payload: value }), {
+    unwrap: jest.fn().mockResolvedValue(value),
+  })
+
+const mockDispatch = jest.fn().mockReturnValue(makeDispatchResult())
 const mockNavigate = jest.fn()
 
 jest.mock('../../../store/hooks', () => ({
@@ -138,5 +143,24 @@ describe('ActivityDetail screen', () => {
     renderScreen({ selected: MOCK_ACTIVITY })
     fireEvent.click(screen.getByRole('button', { name: /← activities/i }))
     expect(mockNavigate).toHaveBeenCalledWith('/activities')
+  })
+
+  it('does not navigate when deleteActivityThunk rejects', async () => {
+    mockDispatch.mockReturnValueOnce(
+      Object.assign(Promise.resolve({ type: 'rejected' }), {
+        unwrap: jest.fn().mockRejectedValue(new Error('Delete failed')),
+      }),
+    )
+    renderScreen({ selected: MOCK_ACTIVITY })
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+    await waitFor(() => {
+      expect(mockNavigate).not.toHaveBeenCalled()
+    })
+  })
+
+  it('does not render HR chart when hrStream is empty', () => {
+    renderScreen({ selected: { ...MOCK_ACTIVITY, hrStream: [] } })
+    expect(screen.queryByTestId('hr-chart')).not.toBeInTheDocument()
   })
 })

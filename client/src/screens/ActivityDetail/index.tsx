@@ -40,8 +40,12 @@ export default function ActivityDetail() {
 
   async function handleDelete() {
     if (!selected) return
-    await dispatch(deleteActivityThunk(selected._id))
-    navigate(ROUTES.ACTIVITIES)
+    try {
+      await dispatch(deleteActivityThunk(selected._id)).unwrap()
+      navigate(ROUTES.ACTIVITIES)
+    } catch {
+      // thunk rejected — stay on page (slice error state handles the message)
+    }
   }
 
   if (loading) return <p className={styles.loading}>Loading…</p>
