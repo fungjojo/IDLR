@@ -1,0 +1,129 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ActivityDetail screen matches snapshot 1`] = `
+<DocumentFragment>
+  <div
+    class="container"
+  >
+    <div
+      class="header"
+    >
+      <button
+        aria-label="← Activities"
+        class="backBtn"
+      >
+        ← Activities
+      </button>
+      <button
+        aria-label="Delete"
+        class="deleteBtn"
+      >
+        Delete
+      </button>
+    </div>
+    <h1
+      class="name"
+    >
+      Morning Run
+    </h1>
+    <p
+      class="meta"
+    >
+      Saturday, 16 May 2026 · 
+      <span
+        class="source"
+      >
+        strava
+      </span>
+    </p>
+    <div
+      class="statCards"
+    >
+      <div
+        class="card"
+      >
+        <span
+          class="label"
+        >
+          Distance
+        </span>
+        <span
+          class="value"
+        >
+          8.20 km
+        </span>
+      </div>
+      <div
+        class="card"
+      >
+        <span
+          class="label"
+        >
+          Time
+        </span>
+        <span
+          class="value"
+        >
+          42:15
+        </span>
+      </div>
+      <div
+        class="card"
+        style="--accent: #dc2626;"
+      >
+        <span
+          class="label"
+        >
+          Avg HR
+        </span>
+        <span
+          class="value"
+        >
+          158 bpm
+        </span>
+      </div>
+      <div
+        class="card"
+        style="--accent: #f97316;"
+      >
+        <span
+          class="label"
+        >
+          Max HR
+        </span>
+        <span
+          class="value"
+        >
+          178 bpm
+        </span>
+      </div>
+    </div>
+    <div
+      class="chart"
+    >
+      <div
+        data-testid="hr-chart"
+      />
+    </div>
+    <div
+      class="pills"
+    >
+      <span
+        class="pill"
+      >
+        Pace: 5:10 /km
+      </span>
+      <span
+        class="pill"
+      >
+        Cadence: 176 spm
+      </span>
+      <span
+        class="pill"
+      >
+        Elevation: +42 m
+      </span>
+    </div>
+  </div>
+</DocumentFragment>
+`;
