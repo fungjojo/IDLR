@@ -32,6 +32,14 @@ exports[`Activities screen matches snapshot 1`] = `
         type="file"
       />
     </div>
+    <p
+      class="empty"
+    >
+      No activities yet. Upload a file above.
+    </p>
+    <div
+      class="list"
+    />
   </div>
 </DocumentFragment>
 `;

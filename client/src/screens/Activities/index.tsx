@@ -1,27 +1,32 @@
-import { useRef, useState, type DragEvent, type ChangeEvent } from 'react'
-import { uploadActivity, type Activity } from '../../services/activities'
+import { useEffect, useRef, useState, type DragEvent, type ChangeEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { uploadActivity } from '../../services/activities'
+import { fetchActivitiesThunk } from '../../store/activitiesSlice'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import ActivityCard from '../../components/ActivityCard'
+import { ROUTES } from '../../constants/routes'
 import styles from './Activities.module.css'
 
 const ACCEPTED_EXTENSIONS = ['.fit', '.gpx']
-
-function formatDistance(meters: number): string {
-  return `${(meters / 1000).toFixed(2)} km`
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+const PAGE_LIMIT = 10
 
 export default function Activities() {
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const { items, loading, error, page, pages } = useAppSelector((s) => s.activities)
+
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [uploaded, setUploaded] = useState<Activity[]>([])
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    dispatch(fetchActivitiesThunk({ page: 1, limit: PAGE_LIMIT }))
+  }, [dispatch])
+
+  function handlePageChange(newPage: number) {
+    dispatch(fetchActivitiesThunk({ page: newPage, limit: PAGE_LIMIT }))
+  }
 
   function handleDragOver(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
@@ -48,20 +53,20 @@ export default function Activities() {
   async function processFile(file: File) {
     const ext = file.name.split('.').pop()?.toLowerCase()
     if (!ACCEPTED_EXTENSIONS.includes(`.${ext ?? ''}`)) {
-      setError('Only .fit and .gpx files are supported')
+      setUploadError('Only .fit and .gpx files are supported')
       return
     }
-    setError(null)
+    setUploadError(null)
     setUploading(true)
     try {
-      const activity = await uploadActivity(file)
-      setUploaded(prev => [activity, ...prev])
+      await uploadActivity(file)
+      dispatch(fetchActivitiesThunk({ page: 1, limit: PAGE_LIMIT }))
     } catch (err: unknown) {
       const msg =
         err && typeof err === 'object' && 'response' in err
           ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Upload failed')
           : 'Upload failed'
-      setError(msg)
+      setUploadError(msg)
     } finally {
       setUploading(false)
     }
@@ -102,23 +107,45 @@ export default function Activities() {
         />
       </div>
 
-      {error && <p className={styles.error}>{error}</p>}
+      {uploadError && <p className={styles.error}>{uploadError}</p>}
 
-      {uploaded.length > 0 && (
-        <>
-          <h2 className={styles.recentTitle}>Uploaded this session</h2>
-          {uploaded.map(a => (
-            <div key={a._id} className={styles.activityCard}>
-              <p className={styles.activityName}>{a.name}</p>
-              <p className={styles.activityMeta}>
-                {new Date(a.date).toLocaleDateString()} &middot;{' '}
-                {formatDistance(a.distanceMeters)} &middot;{' '}
-                {formatDuration(a.durationSeconds)} &middot;{' '}
-                Avg HR {a.avgHR} bpm
-              </p>
-            </div>
-          ))}
-        </>
+      {loading && <p className={styles.loading}>Loading…</p>}
+      {error && !loading && <p className={styles.error}>{error}</p>}
+
+      {!loading && items.length === 0 && !error && (
+        <p className={styles.empty}>No activities yet. Upload a file above.</p>
+      )}
+
+      <div className={styles.list}>
+        {items.map((a) => (
+          <ActivityCard
+            key={a._id}
+            activity={a}
+            onClick={() => navigate(ROUTES.ACTIVITY_DETAIL.replace(':id', a._id))}
+          />
+        ))}
+      </div>
+
+      {pages > 1 && (
+        <div className={styles.pagination}>
+          <button
+            className={styles.pageBtn}
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1}
+            aria-label="Prev page"
+          >
+            ← Prev
+          </button>
+          <span className={styles.pageInfo}>{page} of {pages}</span>
+          <button
+            className={styles.pageBtn}
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page >= pages}
+            aria-label="Next page"
+          >
+            Next →
+          </button>
+        </div>
       )}
     </div>
   )

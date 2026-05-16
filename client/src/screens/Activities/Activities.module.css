@@ -81,3 +81,54 @@
   font-size: 0.8rem;
   color: #64748b;
 }
+
+.loading {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin-top: 1.5rem;
+}
+
+.empty {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  margin-top: 1.5rem;
+}
+
+.list {
+  margin-top: 1.5rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.pageBtn {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageInfo {
+  font-size: 0.875rem;
+  color: #64748b;
+  min-width: 60px;
+  text-align: center;
+}
