@@ -1,0 +1,19 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`HRChart matches snapshot 1`] = `
+<DocumentFragment>
+  <div
+    class="container"
+  >
+    <div
+      data-testid="chart-container"
+      style="width: 600px; height: 200px;"
+    >
+      <div
+        class="recharts-wrapper"
+        style="position: relative; cursor: default;"
+      />
+    </div>
+  </div>
+</DocumentFragment>
+`;

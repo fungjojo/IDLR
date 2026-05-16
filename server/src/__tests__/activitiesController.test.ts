@@ -1,9 +1,25 @@
 import type { Response } from 'express'
 import type { AuthRequest } from '../middleware/auth'
-import { uploadActivity } from '../controllers/activitiesController'
+import {
+  uploadActivity,
+  getActivities,
+  getActivity,
+  deleteActivity,
+} from '../controllers/activitiesController'
 
 const mockCreate = jest.fn()
-jest.mock('../models/Activity', () => ({ Activity: { create: (...args: unknown[]) => mockCreate(...args) } }))
+const mockFind = jest.fn()
+const mockFindById = jest.fn()
+const mockCountDocuments = jest.fn()
+
+jest.mock('../models/Activity', () => ({
+  Activity: {
+    create: (...args: unknown[]) => mockCreate(...args),
+    find: (...args: unknown[]) => mockFind(...args),
+    findById: (...args: unknown[]) => mockFindById(...args),
+    countDocuments: (...args: unknown[]) => mockCountDocuments(...args),
+  },
+}))
 
 const mockParseFit = jest.fn()
 const mockParseGpx = jest.fn()
@@ -21,6 +37,13 @@ const ACTIVITY_DATA = {
   paceStream: [333, 312, 322],
 }
 
+const MOCK_ACTIVITY_DOC = {
+  _id: 'act-1',
+  userId: { toString: () => 'user123' },
+  ...ACTIVITY_DATA,
+  deleteOne: jest.fn().mockResolvedValue({}),
+}
+
 function makeReq(overrides: Partial<AuthRequest> = {}): AuthRequest {
   return {
     user: { id: 'user123', email: 'test@test.com', role: 'member' },
@@ -31,6 +54,8 @@ function makeReq(overrides: Partial<AuthRequest> = {}): AuthRequest {
       buffer: Buffer.from('<gpx/>'),
       size: 10,
     } as Express.Multer.File,
+    query: {},
+    params: {},
     ...overrides,
   } as AuthRequest
 }
@@ -39,9 +64,12 @@ function makeRes(): Response {
   const res = {
     status: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
+    send: jest.fn().mockReturnThis(),
   }
   return res as unknown as Response
 }
+
+// ── uploadActivity (existing) ──────────────────────────────────────────────
 
 describe('uploadActivity', () => {
   beforeEach(() => jest.clearAllMocks())
@@ -98,5 +126,135 @@ describe('uploadActivity', () => {
     const res = makeRes()
     await uploadActivity(req, res)
     expect(res.status).toHaveBeenCalledWith(500)
+  })
+})
+
+// ── getActivities ──────────────────────────────────────────────────────────
+
+describe('getActivities', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  function makeChain(result: unknown[]) {
+    return {
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue(result),
+    }
+  }
+
+  it('returns paginated activities for the current user', async () => {
+    mockFind.mockReturnValue(makeChain([MOCK_ACTIVITY_DOC]))
+    mockCountDocuments.mockResolvedValue(1)
+    const req = makeReq({ query: { page: '1', limit: '10' } })
+    const res = makeRes()
+    await getActivities(req, res)
+    expect(mockFind).toHaveBeenCalledWith({ userId: 'user123' })
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      activities: [MOCK_ACTIVITY_DOC],
+      total: 1,
+      page: 1,
+      pages: 1,
+    }))
+  })
+
+  it('defaults to page 1 and limit 10 when query params are missing', async () => {
+    mockFind.mockReturnValue(makeChain([]))
+    mockCountDocuments.mockResolvedValue(0)
+    const req = makeReq({ query: {} })
+    const res = makeRes()
+    await getActivities(req, res)
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pages: 0 }))
+  })
+
+  it('falls back to page 1 and limit 10 when params are non-numeric', async () => {
+    mockFind.mockReturnValue(makeChain([]))
+    mockCountDocuments.mockResolvedValue(0)
+    const req = makeReq({ query: { page: 'abc', limit: 'xyz' } })
+    const res = makeRes()
+    await getActivities(req, res)
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
+  })
+
+  it('returns 500 on database error', async () => {
+    mockFind.mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockRejectedValue(new Error('db error')),
+    })
+    mockCountDocuments.mockResolvedValue(0)
+    const req = makeReq({ query: {} })
+    const res = makeRes()
+    await getActivities(req, res)
+    expect(res.status).toHaveBeenCalledWith(500)
+  })
+})
+
+// ── getActivity ────────────────────────────────────────────────────────────
+
+describe('getActivity', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('returns the activity when found and owned by user', async () => {
+    mockFindById.mockResolvedValue(MOCK_ACTIVITY_DOC)
+    const req = makeReq({ params: { id: 'act-1' } })
+    const res = makeRes()
+    await getActivity(req, res)
+    expect(res.json).toHaveBeenCalledWith(MOCK_ACTIVITY_DOC)
+  })
+
+  it('returns 404 when activity does not exist', async () => {
+    mockFindById.mockResolvedValue(null)
+    const req = makeReq({ params: { id: 'bad-id' } })
+    const res = makeRes()
+    await getActivity(req, res)
+    expect(res.status).toHaveBeenCalledWith(404)
+  })
+
+  it('returns 404 when activity belongs to another user', async () => {
+    mockFindById.mockResolvedValue({
+      ...MOCK_ACTIVITY_DOC,
+      userId: { toString: () => 'other-user' },
+    })
+    const req = makeReq({ params: { id: 'act-1' } })
+    const res = makeRes()
+    await getActivity(req, res)
+    expect(res.status).toHaveBeenCalledWith(404)
+  })
+})
+
+// ── deleteActivity ─────────────────────────────────────────────────────────
+
+describe('deleteActivity', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('deletes the activity and returns 204', async () => {
+    const mockDoc = { ...MOCK_ACTIVITY_DOC, deleteOne: jest.fn().mockResolvedValue({}) }
+    mockFindById.mockResolvedValue(mockDoc)
+    const req = makeReq({ params: { id: 'act-1' } })
+    const res = makeRes()
+    await deleteActivity(req, res)
+    expect(mockDoc.deleteOne).toHaveBeenCalled()
+    expect(res.status).toHaveBeenCalledWith(204)
+    expect(res.send).toHaveBeenCalled()
+  })
+
+  it('returns 404 when activity does not exist', async () => {
+    mockFindById.mockResolvedValue(null)
+    const req = makeReq({ params: { id: 'bad-id' } })
+    const res = makeRes()
+    await deleteActivity(req, res)
+    expect(res.status).toHaveBeenCalledWith(404)
+  })
+
+  it('returns 404 when activity belongs to another user', async () => {
+    mockFindById.mockResolvedValue({
+      ...MOCK_ACTIVITY_DOC,
+      userId: { toString: () => 'other-user' },
+      deleteOne: jest.fn(),
+    })
+    const req = makeReq({ params: { id: 'act-1' } })
+    const res = makeRes()
+    await deleteActivity(req, res)
+    expect(res.status).toHaveBeenCalledWith(404)
   })
 })

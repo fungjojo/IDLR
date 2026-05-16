@@ -1,0 +1,82 @@
+.card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px 12px 12px 18px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, #dc2626, #f97316);
+  border-radius: 8px 0 0 8px;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card:focus {
+  outline: none;
+}
+
+.card:focus-visible {
+  box-shadow: 0 0 0 2px #6366f1;
+}
+
+.header {
+  margin-bottom: 6px;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 2px;
+}
+
+.meta {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+.source {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  font-size: 13px;
+  color: #475569;
+}
+
+.sep {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.hrAvg {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.hrMax {
+  color: #f97316;
+  font-weight: 600;
+}
