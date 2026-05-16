@@ -126,7 +126,7 @@ export default function Activities() {
         ))}
       </div>
 
-      {pages > 1 && (
+      {pages >= 1 && (
         <div className={styles.pagination}>
           <button
             className={styles.pageBtn}

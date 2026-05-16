@@ -7,6 +7,12 @@ import type { Activity } from '../../../types/activity'
 jest.mock('../../../services/api')
 jest.mock('../../../services/activities')
 
+const mockNavigate = jest.fn()
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}))
+
 const mockDispatch = jest.fn().mockReturnValue(Promise.resolve({ payload: undefined }))
 
 jest.mock('../../../store/hooks', () => ({
@@ -68,10 +74,9 @@ describe('Activities screen', () => {
   })
 
   it('dispatches fetchActivitiesThunk on mount', () => {
+    const { fetchActivitiesThunk } = jest.requireMock('../../../store/activitiesSlice')
     renderScreen()
-    expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'activities/fetchActivities/pending' }),
-    )
+    expect(fetchActivitiesThunk).toHaveBeenCalledWith({ page: 1, limit: 10 })
   })
 
   it('renders upload dropzone', () => {
@@ -99,7 +104,13 @@ describe('Activities screen', () => {
     expect(screen.getByText(/no activities yet/i)).toBeInTheDocument()
   })
 
-  it('shows pagination when pages > 1', () => {
+  it('clicking an activity card navigates to its detail route', () => {
+    renderScreen({ items: [MOCK_ACTIVITY] })
+    fireEvent.click(screen.getByRole('button', { name: /morning run/i }))
+    expect(mockNavigate).toHaveBeenCalledWith('/activities/act-1')
+  })
+
+  it('shows pagination when pages >= 1', () => {
     renderScreen({ items: [MOCK_ACTIVITY], page: 1, pages: 3 })
     expect(screen.getByText('1 of 3')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()

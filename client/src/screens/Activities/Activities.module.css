@@ -52,36 +52,6 @@
   margin-top: 0.75rem;
 }
 
-.success {
-  color: #16a34a;
-  font-size: 0.875rem;
-  margin-top: 0.75rem;
-}
-
-.recentTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 2rem 0 0.75rem;
-}
-
-.activityCard {
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.75rem;
-  background: #fff;
-}
-
-.activityName {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-}
-
-.activityMeta {
-  font-size: 0.8rem;
-  color: #64748b;
-}
-
 .loading {
   color: #64748b;
   font-size: 0.875rem;
