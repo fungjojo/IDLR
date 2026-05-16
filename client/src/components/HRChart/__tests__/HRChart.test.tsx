@@ -28,4 +28,9 @@ describe('HRChart', () => {
     render(<HRChart hrStream={HR_STREAM} durationSeconds={600} />)
     expect(screen.getByTestId('chart-container')).toBeInTheDocument()
   })
+
+  it('renders without crashing when hrStream is empty', () => {
+    render(<HRChart hrStream={[]} durationSeconds={0} />)
+    expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+  })
 })

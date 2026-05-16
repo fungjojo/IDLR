@@ -47,8 +47,8 @@ export default function HRChart({ hrStream, durationSeconds }: HRChartProps) {
               borderRadius: 6,
               fontSize: 12,
             }}
-            formatter={(v) => [`${v as number} bpm`, 'HR']}
-            labelFormatter={(l) => `${l as number} min`}
+            formatter={(v) => [`${typeof v === 'number' ? v : Number(v)} bpm`, 'HR']}
+            labelFormatter={(l) => `${typeof l === 'number' ? l : Number(l)} min`}
           />
           <Line
             type="monotone"
