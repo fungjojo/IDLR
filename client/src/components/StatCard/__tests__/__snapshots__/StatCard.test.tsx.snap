@@ -1,0 +1,40 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`StatCard matches snapshot with accent color 1`] = `
+<DocumentFragment>
+  <div
+    class="card"
+    style="--accent: #dc2626;"
+  >
+    <span
+      class="label"
+    >
+      Avg HR
+    </span>
+    <span
+      class="value"
+    >
+      158 bpm
+    </span>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`StatCard matches snapshot without accent 1`] = `
+<DocumentFragment>
+  <div
+    class="card"
+  >
+    <span
+      class="label"
+    >
+      Distance
+    </span>
+    <span
+      class="value"
+    >
+      8.2 km
+    </span>
+  </div>
+</DocumentFragment>
+`;

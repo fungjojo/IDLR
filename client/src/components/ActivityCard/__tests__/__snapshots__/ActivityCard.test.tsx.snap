@@ -1,0 +1,70 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ActivityCard matches snapshot 1`] = `
+<DocumentFragment>
+  <div
+    class="card"
+    role="button"
+    tabindex="0"
+  >
+    <div
+      class="header"
+    >
+      <p
+        class="name"
+      >
+        Morning Run
+      </p>
+      <p
+        class="meta"
+      >
+        Sat, 16 May 2026 · 
+        <span
+          class="source"
+        >
+          strava
+        </span>
+      </p>
+    </div>
+    <div
+      class="stats"
+    >
+      <span
+        class="stat"
+      >
+        8.20 km
+      </span>
+      <span
+        class="sep"
+      >
+        ·
+      </span>
+      <span
+        class="stat"
+      >
+        42:15
+      </span>
+      <span
+        class="sep"
+      >
+        ·
+      </span>
+      <span
+        class="stat hrAvg"
+      >
+        ♥ 158 avg
+      </span>
+      <span
+        class="sep"
+      >
+        ·
+      </span>
+      <span
+        class="stat hrMax"
+      >
+        ♥ 178 max
+      </span>
+    </div>
+  </div>
+</DocumentFragment>
+`;
