@@ -1,4 +1,6 @@
-import type { ActivityData } from './activityTypes'
+import {
+  computeHrStats, speedToPace, deriveActivityName, type ActivityData,
+} from './activityTypes'
 
 function extractText(xml: string, tag: string): string | undefined {
   const match = xml.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`))
@@ -8,6 +10,16 @@ function extractText(xml: string, tag: string): string | undefined {
 function extractAttr(xml: string, tag: string, attr: string): string | undefined {
   const match = xml.match(new RegExp(`<${tag}[^>]*\\s${attr}="([^"]*)"[^>]*>`))
   return match?.[1]
+}
+
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
 interface Trkpt {
@@ -21,7 +33,7 @@ interface Trkpt {
 function parseTrkpt(xml: string): Trkpt | null {
   const lat = parseFloat(extractAttr(xml, 'trkpt', 'lat') ?? '')
   const lon = parseFloat(extractAttr(xml, 'trkpt', 'lon') ?? '')
-  if (isNaN(lat) || isNaN(lon)) return null
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return null
 
   const hrText = extractText(xml, 'gpxtpx:hr') ?? extractText(xml, 'ns3:hr') ?? extractText(xml, 'hr')
   const hr = hrText ? parseInt(hrText, 10) : undefined
@@ -32,7 +44,9 @@ function parseTrkpt(xml: string): Trkpt | null {
   const speedText = extractText(xml, 'gpxtpx:speed') ?? extractText(xml, 'ns3:speed') ?? extractText(xml, 'speed')
   const speed = speedText ? parseFloat(speedText) : undefined
 
-  return { lat, lon, hr, time, speed }
+  return {
+    lat, lon, hr, time, speed,
+  }
 }
 
 export function parseGpxBuffer(buffer: Buffer, filename: string): ActivityData {
@@ -42,30 +56,24 @@ export function parseGpxBuffer(buffer: Buffer, filename: string): ActivityData {
   // <metadata><name> before the track, so matching the first <name> returns the wrong value.
   const trkBlock = xml.match(/<trk[\s\S]*?<\/trk>/)?.[0] ?? ''
   const nameText = extractText(trkBlock, 'name')
-  const baseName = nameText || filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')
+  const baseName = nameText || deriveActivityName(filename)
 
   // Extract all <trkpt> blocks
   const trkptBlocks = xml.match(/<trkpt[\s\S]*?<\/trkpt>/g) ?? []
   const points = trkptBlocks.map(parseTrkpt).filter((p): p is Trkpt => p !== null)
 
-  const hrStream = points.map(p => p.hr ?? 0).filter(Boolean)
-  const paceStream = points.map(p => {
-    const speed = p.speed ?? 0
-    return speed > 0 ? 1000 / speed : 0
-  })
-  const coordinates = points.map<[number, number]>(p => [p.lat, p.lon])
+  const hrStream = points.map((p) => p.hr ?? 0).filter(Boolean)
+  const paceStream = points.map((p) => speedToPace(p.speed ?? 0))
+  const coordinates = points.map<[number, number]>((p) => [p.lat, p.lon])
 
-  const avgHR = hrStream.length > 0
-    ? Math.round(hrStream.reduce((s, v) => s + v, 0) / hrStream.length)
-    : 0
-  const maxHRVal = hrStream.length > 0 ? Math.max(...hrStream) : 0
+  const { avgHR, maxHR: maxHRVal } = computeHrStats(hrStream)
 
   // Date from first trackpoint or fallback
   const date = points[0]?.time ?? new Date()
 
   // Distance: sum haversine between consecutive points
   let distanceMeters = 0
-  for (let i = 1; i < points.length; i++) {
+  for (let i = 1; i < points.length; i += 1) {
     distanceMeters += haversine(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon)
   }
 
@@ -84,15 +92,4 @@ export function parseGpxBuffer(buffer: Buffer, filename: string): ActivityData {
     paceStream,
     coordinates: coordinates.length > 0 ? coordinates : undefined,
   }
-}
-
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLon = toRad(lon2 - lon1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
