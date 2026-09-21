@@ -1,3 +1,4 @@
+import { configureStore } from '@reduxjs/toolkit'
 import activitiesReducer, {
   fetchActivitiesThunk,
   fetchActivityThunk,
@@ -11,16 +12,22 @@ import activitiesReducer, {
 } from '../activitiesSlice'
 import type { Activity, PaginatedActivities } from '../../types/activity'
 
+import * as activitiesService from '../../services/activities'
+
 jest.mock('../../services/activities', () => ({
   fetchActivities: jest.fn(),
   fetchActivity: jest.fn(),
   deleteActivity: jest.fn(),
 }))
-
-import * as activitiesService from '../../services/activities'
-const mockFetchActivities = activitiesService.fetchActivities as jest.MockedFunction<typeof activitiesService.fetchActivities>
-const mockFetchActivity = activitiesService.fetchActivity as jest.MockedFunction<typeof activitiesService.fetchActivity>
-const mockDeleteActivity = activitiesService.deleteActivity as jest.MockedFunction<typeof activitiesService.deleteActivity>
+const mockFetchActivities = activitiesService.fetchActivities as jest.MockedFunction<
+  typeof activitiesService.fetchActivities
+>
+const mockFetchActivity = activitiesService.fetchActivity as jest.MockedFunction<
+  typeof activitiesService.fetchActivity
+>
+const mockDeleteActivity = activitiesService.deleteActivity as jest.MockedFunction<
+  typeof activitiesService.deleteActivity
+>
 
 const mockActivity: Activity = {
   _id: 'act-1',
@@ -52,8 +59,6 @@ const initialState: ActivitiesState = {
   loading: false,
   error: null,
 }
-
-import { configureStore } from '@reduxjs/toolkit'
 
 function makeStore(preloaded?: Partial<ActivitiesState>) {
   return configureStore({
@@ -106,7 +111,9 @@ describe('fetchActivitiesThunk', () => {
     mockFetchActivities.mockResolvedValue(mockPaginated)
     const store = makeStore()
     await store.dispatch(fetchActivitiesThunk({ page: 1, limit: 10 }))
-    const { items, total, page, pages, loading } = store.getState().activities
+    const {
+      items, total, page, pages, loading,
+    } = store.getState().activities
     expect(items).toEqual([mockActivity])
     expect(total).toBe(1)
     expect(page).toBe(1)

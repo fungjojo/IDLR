@@ -1,4 +1,6 @@
-import { Schema, model, type Document, type Types } from 'mongoose'
+import {
+  Schema, model, type Document, type Types,
+} from 'mongoose'
 
 export interface IRefreshToken extends Document {
   jti: string
@@ -11,7 +13,9 @@ export interface IRefreshToken extends Document {
 const refreshTokenSchema = new Schema<IRefreshToken>(
   {
     jti: { type: String, required: true, unique: true },
-    userId: { type: Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+    userId: {
+      type: Schema.Types.ObjectId, required: true, ref: 'User', index: true,
+    },
     expiresAt: { type: Date, required: true },
     revokedAt: { type: Date },
   },

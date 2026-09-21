@@ -22,7 +22,9 @@ const STRAVA_TOKEN_FIELDS = ['stravaAccessToken', 'stravaRefreshToken'] as const
 const userSchema = new Schema<IUser>(
   {
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email: {
+      type: String, required: true, unique: true, lowercase: true, trim: true,
+    },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['admin', 'member'], default: 'member' },
     maxHR: { type: Number, default: 190 },
@@ -37,30 +39,33 @@ const userSchema = new Schema<IUser>(
 )
 
 // Encrypt Strava OAuth tokens before saving — only when ENCRYPTION_KEY is configured
-userSchema.pre('save', function (next) {
-  if (!process.env.ENCRYPTION_KEY) return next()
-  for (const field of STRAVA_TOKEN_FIELDS) {
+userSchema.pre('save', function encryptStravaTokesPreSave(next) {
+  if (!process.env.ENCRYPTION_KEY) {
+    return next()
+  }
+  STRAVA_TOKEN_FIELDS.forEach((field) => {
     const value = this[field]
     if (this.isModified(field) && typeof value === 'string') {
       this[field] = encrypt(value)
     }
-  }
-  next()
+  })
+  return next()
 })
 
 // Decrypt on load so callers always work with plaintext
-userSchema.post('init', function (doc: IUser) {
+userSchema.post('init', (doc: IUser) => {
   if (!process.env.ENCRYPTION_KEY) return
-  for (const field of STRAVA_TOKEN_FIELDS) {
+  STRAVA_TOKEN_FIELDS.forEach((field) => {
     const value = doc[field]
     if (typeof value === 'string') {
       try {
+        // eslint-disable-next-line no-param-reassign
         doc[field] = decrypt(value)
       } catch {
         // value was stored before encryption was enabled — leave as-is
       }
     }
-  }
+  })
 })
 
 export const User = model<IUser>('User', userSchema)

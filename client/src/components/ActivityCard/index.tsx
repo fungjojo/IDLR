@@ -47,9 +47,19 @@ export default function ActivityCard({ activity, onClick }: ActivityCardProps) {
         <span className={styles.sep}>·</span>
         <span className={styles.stat}>{formatDuration(activity.durationSeconds)}</span>
         <span className={styles.sep}>·</span>
-        <span className={`${styles.stat} ${styles.hrAvg}`}>♥ {activity.avgHR} avg</span>
+        <span className={`${styles.stat} ${styles.hrAvg}`}>
+          ♥
+          {activity.avgHR}
+          {' '}
+          avg
+        </span>
         <span className={styles.sep}>·</span>
-        <span className={`${styles.stat} ${styles.hrMax}`}>♥ {activity.maxHR} max</span>
+        <span className={`${styles.stat} ${styles.hrMax}`}>
+          ♥
+          {activity.maxHR}
+          {' '}
+          max
+        </span>
       </div>
     </div>
   )

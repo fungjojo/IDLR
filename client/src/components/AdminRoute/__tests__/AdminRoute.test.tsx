@@ -39,11 +39,11 @@ function renderWithRoutes(user: BaseUser | null, initialPath = '/admin') {
         <Routes>
           <Route
             path="/admin"
-            element={
+            element={(
               <AdminRoute>
                 <div>Admin content</div>
               </AdminRoute>
-            }
+            )}
           />
           <Route path="/login" element={<div>Login page</div>} />
           <Route path="/dashboard" element={<div>Dashboard page</div>} />

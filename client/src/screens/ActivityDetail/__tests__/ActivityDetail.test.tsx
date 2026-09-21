@@ -1,7 +1,11 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import {
+  render, screen, fireEvent, waitFor,
+} from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ActivityDetail from '../index'
 import type { Activity } from '../../../types/activity'
+
+import { useAppSelector } from '../../../store/hooks'
 
 const makeDispatchResult = (value: unknown = undefined) =>
   Object.assign(Promise.resolve({ payload: value }), {
@@ -37,8 +41,6 @@ jest.mock('../../../components/HRChart', () => ({
   __esModule: true,
   default: () => <div data-testid="hr-chart" />,
 }))
-
-import { useAppSelector } from '../../../store/hooks'
 const mockUseAppSelector = useAppSelector as jest.Mock
 
 const MOCK_ACTIVITY: Activity = {

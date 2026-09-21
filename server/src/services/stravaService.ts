@@ -1,5 +1,5 @@
 import type { IUser } from '../models/User'
-import type { ActivityData } from './activityTypes'
+import { computeHrStats, speedToPace, type ActivityData } from './activityTypes'
 
 const STRAVA_BASE = 'https://www.strava.com/api/v3'
 const TOKEN_URL = 'https://www.strava.com/oauth/token'
@@ -76,27 +76,43 @@ export async function refreshAccessToken(user: IUser): Promise<string> {
   }
   const tokens = await res.json() as StravaTokenResponse
 
+  // Mutating `user` (a Mongoose doc) and calling .save() is intentional here,
+  // not a stray side effect: it's what triggers the pre('save') hook in
+  // models/User.ts that encrypts the Strava tokens before they hit the DB.
+  // Switching to a non-mutating User.findByIdAndUpdate(...) call (as
+  // stravaController's stravaCallback does) would bypass that hook and store
+  // the refreshed tokens in plaintext, so it's left as-is.
+  // eslint-disable-next-line no-param-reassign
   user.stravaAccessToken = tokens.access_token
+  // eslint-disable-next-line no-param-reassign
   user.stravaRefreshToken = tokens.refresh_token
+  // eslint-disable-next-line no-param-reassign
   user.stravaTokenExpiresAt = tokens.expires_at
   await user.save()
 
   return tokens.access_token
 }
 
-export async function fetchActivities(accessToken: string, after?: number): Promise<StravaActivity[]> {
+export async function fetchActivities(
+  accessToken: string,
+  after?: number,
+): Promise<StravaActivity[]> {
   const all: StravaActivity[] = []
   let page = 1
+  // Sequential by necessity — each request's result (batch length) decides
+  // whether another page is needed, so the awaits can't be parallelized.
+  // eslint-disable-next-line no-await-in-loop
   while (true) {
     const params = new URLSearchParams({
       per_page: '50',
       page: String(page),
       ...(after ? { after: String(after) } : {}),
     })
+    // eslint-disable-next-line no-await-in-loop
     const batch = await stravaFetch(`/athlete/activities?${params}`, accessToken) as StravaActivity[]
     all.push(...batch)
     if (batch.length < 50) break
-    page++
+    page += 1
   }
   return all
 }
@@ -110,9 +126,9 @@ export async function fetchActivityStreams(
     accessToken,
   ) as StravaStream[]
 
-  const hrStream = streams.find(s => s.type === 'heartrate')?.data ?? []
-  const velocityStream = streams.find(s => s.type === 'velocity_smooth')?.data ?? []
-  const paceStream = velocityStream.map(v => (v > 0 ? 1000 / v : 0))
+  const hrStream = streams.find((s) => s.type === 'heartrate')?.data ?? []
+  const velocityStream = streams.find((s) => s.type === 'velocity_smooth')?.data ?? []
+  const paceStream = velocityStream.map(speedToPace)
 
   return { hrStream, paceStream }
 }
@@ -122,18 +138,14 @@ export function normaliseActivity(
   hrStream: number[],
   paceStream: number[],
 ): ActivityData {
-  const computedMax = hrStream.length > 0
-    ? hrStream.reduce((max, v) => (v > max ? v : max), 0)
-    : 0
+  const computed = computeHrStats(hrStream)
   return {
     name: raw.name,
     date: new Date(raw.start_date),
     distanceMeters: raw.distance,
     durationSeconds: raw.elapsed_time,
-    avgHR: raw.average_heartrate ?? (hrStream.length > 0
-      ? Math.round(hrStream.reduce((s, v) => s + v, 0) / hrStream.length)
-      : 0),
-    maxHR: raw.max_heartrate ?? computedMax,
+    avgHR: raw.average_heartrate ?? computed.avgHR,
+    maxHR: raw.max_heartrate ?? computed.maxHR,
     hrStream,
     paceStream,
     cadenceAvg: raw.average_cadence,

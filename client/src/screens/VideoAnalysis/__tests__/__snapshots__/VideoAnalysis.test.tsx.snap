@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`VideoAnalysis matches snapshot 1`] = `
+<DocumentFragment>
+  <div>
+    VideoAnalysis
+  </div>
+</DocumentFragment>
+`;

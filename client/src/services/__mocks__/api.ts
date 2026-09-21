@@ -14,4 +14,6 @@ const api = {
   },
 } as unknown as typeof axios
 
+export const registerAuthFailureHandler = jest.fn()
+
 export default api

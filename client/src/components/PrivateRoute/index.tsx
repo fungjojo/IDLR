@@ -9,5 +9,5 @@ interface Props {
 
 export default function PrivateRoute({ children }: Props) {
   const user = useAppSelector((state) => state.auth.user)
-  return user ? <>{children}</> : <Navigate to={ROUTES.LOGIN} replace />
+  return user ? children : <Navigate to={ROUTES.LOGIN} replace />
 }

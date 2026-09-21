@@ -1,4 +1,6 @@
-import { exchangeCode, refreshAccessToken, fetchActivities, fetchActivityStreams, normaliseActivity } from '../services/stravaService'
+import {
+  exchangeCode, refreshAccessToken, fetchActivities, fetchActivityStreams, normaliseActivity,
+} from '../services/stravaService'
 
 const mockFetch = jest.fn()
 global.fetch = mockFetch

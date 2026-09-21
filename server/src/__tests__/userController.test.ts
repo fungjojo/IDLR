@@ -42,31 +42,39 @@ function mockRes() {
 }
 
 function adminReq(overrides: Partial<AuthRequest> = {}): AuthRequest {
-  return { user: { id: 'user-id-1', role: 'admin' }, params: {}, body: {}, ...overrides } as AuthRequest
+  return {
+    user: { id: 'user-id-1', role: 'admin' }, params: {}, body: {}, ...overrides,
+  } as AuthRequest
 }
 
 describe('getUsers', () => {
   beforeEach(() => jest.clearAllMocks())
 
   it('returns list of users without sensitive fields', async () => {
-    const sortMock = jest.fn().mockResolvedValue(mockUsers)
-    ;(User.find as jest.Mock).mockReturnValue({ sort: sortMock })
+    const sortMock = jest.fn().mockResolvedValue(mockUsers);
+    (User.find as jest.Mock).mockReturnValue({ sort: sortMock })
     const res = mockRes()
     await getUsers(adminReq(), res)
     expect(User.find).toHaveBeenCalledWith(
       {},
-      { passwordHash: 0, stravaAccessToken: 0, stravaRefreshToken: 0, stravaAthleteId: 0 },
+      {
+        passwordHash: 0, stravaAccessToken: 0, stravaRefreshToken: 0, stravaAthleteId: 0,
+      },
     )
     expect(res.json).toHaveBeenCalledWith({
       users: [
-        { id: 'user-id-1', name: 'Alice', email: 'alice@example.com', role: 'admin', maxHR: 185, createdAt: mockUsers[0].createdAt },
-        { id: 'user-id-2', name: 'Bob', email: 'bob@example.com', role: 'member', maxHR: 180, createdAt: mockUsers[1].createdAt },
+        {
+          id: 'user-id-1', name: 'Alice', email: 'alice@example.com', role: 'admin', maxHR: 185, createdAt: mockUsers[0].createdAt,
+        },
+        {
+          id: 'user-id-2', name: 'Bob', email: 'bob@example.com', role: 'member', maxHR: 180, createdAt: mockUsers[1].createdAt,
+        },
       ],
     })
   })
 
   it('returns 500 on unexpected error', async () => {
-    ;(User.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockRejectedValue(new Error('DB error')) })
+    (User.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockRejectedValue(new Error('DB error')) })
     const res = mockRes()
     await getUsers(adminReq(), res)
     expect(res.status).toHaveBeenCalledWith(500)
@@ -86,7 +94,7 @@ describe('deleteUser', () => {
   })
 
   it('returns 400 for invalid ObjectId', async () => {
-    ;(mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(false)
+    (mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(false)
     const res = mockRes()
     await deleteUser(adminReq({ params: { id: 'bad-id' } }), res)
     expect(res.status).toHaveBeenCalledWith(400)
@@ -94,7 +102,7 @@ describe('deleteUser', () => {
   })
 
   it('returns 400 when admin tries to delete own account', async () => {
-    ;(mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true)
+    (mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true)
     const res = mockRes()
     await deleteUser(adminReq({ params: { id: 'user-id-1' } }), res)
     expect(res.status).toHaveBeenCalledWith(400)
@@ -102,8 +110,8 @@ describe('deleteUser', () => {
   })
 
   it('returns 404 when user does not exist', async () => {
-    ;(mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true)
-    ;(User.findByIdAndDelete as jest.Mock).mockResolvedValue(null)
+    (mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true);
+    (User.findByIdAndDelete as jest.Mock).mockResolvedValue(null)
     const res = mockRes()
     await deleteUser(adminReq({ params: { id: 'user-id-2' } }), res)
     expect(res.status).toHaveBeenCalledWith(404)
@@ -111,8 +119,8 @@ describe('deleteUser', () => {
   })
 
   it('deletes user and returns success message', async () => {
-    ;(mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true)
-    ;(User.findByIdAndDelete as jest.Mock).mockResolvedValue(mockUsers[1])
+    (mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true);
+    (User.findByIdAndDelete as jest.Mock).mockResolvedValue(mockUsers[1])
     const res = mockRes()
     await deleteUser(adminReq({ params: { id: 'user-id-2' } }), res)
     expect(User.findByIdAndDelete).toHaveBeenCalledWith('user-id-2')
@@ -120,8 +128,8 @@ describe('deleteUser', () => {
   })
 
   it('returns 500 on unexpected error', async () => {
-    ;(mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true)
-    ;(User.findByIdAndDelete as jest.Mock).mockRejectedValue(new Error('DB error'))
+    (mongoose.Types.ObjectId.isValid as jest.Mock).mockReturnValue(true);
+    (User.findByIdAndDelete as jest.Mock).mockRejectedValue(new Error('DB error'))
     const res = mockRes()
     await deleteUser(adminReq({ params: { id: 'user-id-2' } }), res)
     expect(res.status).toHaveBeenCalledWith(500)

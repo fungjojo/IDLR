@@ -30,7 +30,7 @@ describe('requireAuth', () => {
   })
 
   it('returns 401 when cookie is present but token is invalid', () => {
-    ;(jwt.verify as jest.Mock).mockImplementation(() => { throw new Error('bad token') })
+    (jwt.verify as jest.Mock).mockImplementation(() => { throw new Error('bad token') })
     const req = { cookies: { idlr_token: 'bad-token' } } as unknown as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
@@ -40,8 +40,8 @@ describe('requireAuth', () => {
   })
 
   it('calls next and sets req.user on valid cookie', () => {
-    const payload = { id: 'user-1', role: 'member' as const }
-    ;(jwt.verify as jest.Mock).mockReturnValue(payload)
+    const payload = { id: 'user-1', role: 'member' as const };
+    (jwt.verify as jest.Mock).mockReturnValue(payload)
     const req = { cookies: { idlr_token: 'valid-token' } } as unknown as AuthRequest
     const res = mockRes()
     const next = jest.fn() as NextFunction
@@ -51,8 +51,8 @@ describe('requireAuth', () => {
   })
 
   it('verifies token with HS256 algorithm', () => {
-    const payload = { id: 'user-1', role: 'member' as const }
-    ;(jwt.verify as jest.Mock).mockReturnValue(payload)
+    const payload = { id: 'user-1', role: 'member' as const };
+    (jwt.verify as jest.Mock).mockReturnValue(payload)
     const req = { cookies: { idlr_token: 'valid-token' } } as unknown as AuthRequest
     requireAuth(req, mockRes(), jest.fn() as NextFunction)
     expect(jwt.verify).toHaveBeenCalledWith(
@@ -64,7 +64,7 @@ describe('requireAuth', () => {
 })
 
 function mockFindById(role: string | null) {
-  ;(User.findById as jest.Mock).mockReturnValue({
+  (User.findById as jest.Mock).mockReturnValue({
     select: jest.fn().mockReturnThis(),
     lean: jest.fn().mockResolvedValue(role !== null ? { role } : null),
   })
@@ -113,7 +113,7 @@ describe('adminOnly', () => {
   })
 
   it('returns 500 on DB error', async () => {
-    ;(User.findById as jest.Mock).mockReturnValue({
+    (User.findById as jest.Mock).mockReturnValue({
       select: jest.fn().mockReturnThis(),
       lean: jest.fn().mockRejectedValue(new Error('DB error')),
     })

@@ -3,14 +3,13 @@ import type { AuthRequest } from '../middleware/auth'
 import { stravaConnect, stravaCallback, stravaSync } from '../controllers/stravaController'
 
 const mockFindById = jest.fn()
-const mockFindByIdAndUpdate = jest.fn()
+const mockSave = jest.fn()
 const mockActivityFind = jest.fn()
 const mockActivityCreate = jest.fn()
 const mockActivityFindOne = jest.fn()
 jest.mock('../models/User', () => ({
   User: {
     findById: (...args: unknown[]) => mockFindById(...args),
-    findByIdAndUpdate: (...args: unknown[]) => mockFindByIdAndUpdate(...args),
   },
 }))
 jest.mock('../models/Activity', () => ({
@@ -96,18 +95,24 @@ describe('stravaCallback', () => {
   beforeEach(() => jest.clearAllMocks())
 
   it('exchanges code and redirects to profile on success', async () => {
-    mockExchangeCode.mockResolvedValue({ access_token: 'at', refresh_token: 'rt', expires_at: 9999, athlete: { id: 42 } })
-    mockFindByIdAndUpdate.mockResolvedValue(null)
+    mockExchangeCode.mockResolvedValue({
+      access_token: 'at', refresh_token: 'rt', expires_at: 9999, athlete: { id: 42 },
+    })
+    mockSave.mockResolvedValue(undefined)
+    mockFindById.mockResolvedValue({ save: mockSave })
     const req = makeReq({ query: { code: 'auth_code', state: 'abc123' }, cookies: { strava_state: 'abc123' } })
     const res = makeRes()
     await stravaCallback(req, res)
     expect(mockExchangeCode).toHaveBeenCalledWith('auth_code')
+    expect(mockFindById).toHaveBeenCalledWith('user1')
+    expect(mockSave).toHaveBeenCalled()
     expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('strava=connected'))
   })
 
   it('clears the state cookie on success', async () => {
     mockExchangeCode.mockResolvedValue({ access_token: 'at', refresh_token: 'rt', expires_at: 9999 })
-    mockFindByIdAndUpdate.mockResolvedValue(null)
+    mockSave.mockResolvedValue(undefined)
+    mockFindById.mockResolvedValue({ save: mockSave })
     const req = makeReq({ query: { code: 'c', state: 'xyz' }, cookies: { strava_state: 'xyz' } })
     const res = makeRes()
     await stravaCallback(req, res)
@@ -190,7 +195,10 @@ describe('stravaSync', () => {
   it('batch-checks duplicates and creates only new activities', async () => {
     mockFindById.mockResolvedValue(userStub)
     mockRefreshToken.mockResolvedValue('access_token')
-    mockActivityFindOne.mockReturnValue({ sort: jest.fn().mockReturnThis(), select: jest.fn().mockResolvedValue(null) })
+    mockActivityFindOne.mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      select: jest.fn().mockResolvedValue(null),
+    })
     mockFetchActivities.mockResolvedValue([rawActivity, { ...rawActivity, id: 2 }])
     // Activity.find returns the existing one (id: 2)
     mockActivityFind.mockResolvedValue([{ stravaActivityId: 2 }])
@@ -207,7 +215,10 @@ describe('stravaSync', () => {
   it('skips activity if stream fetch throws', async () => {
     mockFindById.mockResolvedValue(userStub)
     mockRefreshToken.mockResolvedValue('access_token')
-    mockActivityFindOne.mockReturnValue({ sort: jest.fn().mockReturnThis(), select: jest.fn().mockResolvedValue(null) })
+    mockActivityFindOne.mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      select: jest.fn().mockResolvedValue(null),
+    })
     mockFetchActivities.mockResolvedValue([rawActivity])
     mockActivityFind.mockResolvedValue([])
     mockFetchStreams.mockRejectedValue(new Error('stream error'))

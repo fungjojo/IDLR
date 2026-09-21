@@ -45,28 +45,32 @@ export default function Login() {
         <p className={styles.subtitle}>Sign in to your account</p>
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.field}>
-            <label htmlFor="email" className={styles.label}>Email</label>
-            <input
-              id="email"
-              type="email"
-              className={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label className={styles.label}>
+              Email
+              <input
+                type="email"
+                className={styles.input}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </label>
           </div>
           <div className={styles.field}>
-            <label htmlFor="password" className={styles.label}>Password</label>
-            <input
-              id="password"
-              type="password"
-              className={styles.input}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label className={styles.label}>
+              Password
+              <input
+                type="password"
+                className={styles.input}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </label>
           </div>
           {error && <p className={styles.error}>{error}</p>}
           <button type="submit" className={styles.button} disabled={loading}>

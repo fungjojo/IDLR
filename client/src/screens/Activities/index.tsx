@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type DragEvent, type ChangeEvent } from 'react'
+import {
+  useEffect, useRef, useState, type DragEvent, type ChangeEvent,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { uploadActivity } from '../../services/activities'
 import { fetchActivitiesThunk } from '../../store/activitiesSlice'
@@ -13,12 +15,35 @@ const PAGE_LIMIT = 10
 export default function Activities() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const { items, loading, error, page, pages } = useAppSelector((s) => s.activities)
+  const {
+    items, loading, error, page, pages,
+  } = useAppSelector((s) => s.activities)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+
+  async function processFile(file: File) {
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (!ACCEPTED_EXTENSIONS.includes(`.${ext ?? ''}`)) {
+      setUploadError('Only .fit and .gpx files are supported')
+      return
+    }
+    setUploadError(null)
+    setUploading(true)
+    try {
+      await uploadActivity(file)
+      dispatch(fetchActivitiesThunk({ page: 1, limit: PAGE_LIMIT }))
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Upload failed')
+        : 'Upload failed'
+      setUploadError(msg)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   useEffect(() => {
     dispatch(fetchActivitiesThunk({ page: 1, limit: PAGE_LIMIT }))
@@ -47,29 +72,8 @@ export default function Activities() {
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) await processFile(file)
+    // eslint-disable-next-line no-param-reassign
     e.target.value = ''
-  }
-
-  async function processFile(file: File) {
-    const ext = file.name.split('.').pop()?.toLowerCase()
-    if (!ACCEPTED_EXTENSIONS.includes(`.${ext ?? ''}`)) {
-      setUploadError('Only .fit and .gpx files are supported')
-      return
-    }
-    setUploadError(null)
-    setUploading(true)
-    try {
-      await uploadActivity(file)
-      dispatch(fetchActivitiesThunk({ page: 1, limit: PAGE_LIMIT }))
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'response' in err
-          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Upload failed')
-          : 'Upload failed'
-      setUploadError(msg)
-    } finally {
-      setUploading(false)
-    }
   }
 
   const dropzoneClass = [
@@ -90,7 +94,15 @@ export default function Activities() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => !uploading && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (!uploading) {
+              inputRef.current?.click()
+            }
+          }
+        }}
         role="button"
+        tabIndex={0}
         aria-label="Upload activity file"
       >
         <p className={styles.dropzoneLabel}>
@@ -129,6 +141,7 @@ export default function Activities() {
       {pages > 1 && (
         <div className={styles.pagination}>
           <button
+            type="button"
             className={styles.pageBtn}
             onClick={() => handlePageChange(page - 1)}
             disabled={page <= 1}
@@ -136,8 +149,15 @@ export default function Activities() {
           >
             ← Prev
           </button>
-          <span className={styles.pageInfo}>{page} of {pages}</span>
+          <span className={styles.pageInfo}>
+            {page}
+            {' '}
+            of
+            {' '}
+            {pages}
+          </span>
           <button
+            type="button"
             className={styles.pageBtn}
             onClick={() => handlePageChange(page + 1)}
             disabled={page >= pages}

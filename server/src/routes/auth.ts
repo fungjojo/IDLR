@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
-import { getSessions, login, logout, me, refresh, register, revokeSession } from '../controllers/authController'
+import {
+  getSessions, login, logout, me, refresh, register, revokeSession,
+} from '../controllers/authController'
 import { requireAuth } from '../middleware/auth'
 import { adminOnly } from '../middleware/adminOnly'
 

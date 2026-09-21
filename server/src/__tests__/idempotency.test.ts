@@ -77,9 +77,9 @@ describe('idempotency middleware', () => {
 
   describe('cache miss (first request)', () => {
     it('inserts a placeholder, calls next(), and wraps res.json to store the response', async () => {
-      const fakeRecord = { _id: 'record-id-1' }
-      ;(IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord)
-      ;(IdempotencyKey.updateOne as jest.Mock).mockResolvedValue({})
+      const fakeRecord = { _id: 'record-id-1' };
+      (IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord);
+      (IdempotencyKey.updateOne as jest.Mock).mockResolvedValue({})
 
       const req = mockReq()
       const res = mockRes()
@@ -98,9 +98,9 @@ describe('idempotency middleware', () => {
     })
 
     it('deletes placeholder and does not store non-2xx responses', async () => {
-      const fakeRecord = { _id: 'record-id-1' }
-      ;(IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord)
-      ;(IdempotencyKey.deleteOne as jest.Mock).mockResolvedValue({})
+      const fakeRecord = { _id: 'record-id-1' };
+      (IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord);
+      (IdempotencyKey.deleteOne as jest.Mock).mockResolvedValue({})
 
       const req = mockReq()
       const res = mockRes()
@@ -116,8 +116,8 @@ describe('idempotency middleware', () => {
     })
 
     it('forwards error to next() when create fails with a non-duplicate-key error', async () => {
-      const dbErr = new Error('Connection timeout')
-      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dbErr)
+      const dbErr = new Error('Connection timeout');
+      (IdempotencyKey.create as jest.Mock).mockRejectedValue(dbErr)
 
       const req = mockReq()
       const res = mockRes()
@@ -129,9 +129,9 @@ describe('idempotency middleware', () => {
     })
 
     it('logs but does not crash when updateOne fails with a non-duplicate error', async () => {
-      const fakeRecord = { _id: 'record-id-1' }
-      ;(IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord)
-      ;(IdempotencyKey.updateOne as jest.Mock).mockRejectedValue(new Error('Write failed'))
+      const fakeRecord = { _id: 'record-id-1' };
+      (IdempotencyKey.create as jest.Mock).mockResolvedValue(fakeRecord);
+      (IdempotencyKey.updateOne as jest.Mock).mockRejectedValue(new Error('Write failed'))
 
       const req = mockReq()
       const res = mockRes()
@@ -147,9 +147,9 @@ describe('idempotency middleware', () => {
 
   describe('cache hit (duplicate request)', () => {
     it('returns cached response when key was previously completed', async () => {
-      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
-      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
-      ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue({
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 });
+      (IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr);
+      (IdempotencyKey.findOne as jest.Mock).mockResolvedValue({
         statusCode: 201,
         body: JSON.stringify({ message: 'ok' }),
       })
@@ -166,9 +166,9 @@ describe('idempotency middleware', () => {
     })
 
     it('returns 409 when key exists but response is still pending (statusCode 0)', async () => {
-      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
-      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
-      ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue({ statusCode: 0, body: '' })
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 });
+      (IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr);
+      (IdempotencyKey.findOne as jest.Mock).mockResolvedValue({ statusCode: 0, body: '' })
 
       const req = mockReq()
       const res = mockRes()
@@ -181,9 +181,9 @@ describe('idempotency middleware', () => {
     })
 
     it('returns 500 when cached body is corrupt JSON', async () => {
-      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
-      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
-      ;(IdempotencyKey.findOne as jest.Mock).mockResolvedValue({
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 });
+      (IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr);
+      (IdempotencyKey.findOne as jest.Mock).mockResolvedValue({
         statusCode: 201,
         body: 'not-valid-json{{{',
       })
@@ -199,10 +199,10 @@ describe('idempotency middleware', () => {
     })
 
     it('forwards error to next() when findOne throws after E11000', async () => {
-      const dupErr = Object.assign(new Error('E11000'), { code: 11000 })
-      ;(IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
-      const findErr = new Error('DB unreachable')
-      ;(IdempotencyKey.findOne as jest.Mock).mockRejectedValue(findErr)
+      const dupErr = Object.assign(new Error('E11000'), { code: 11000 });
+      (IdempotencyKey.create as jest.Mock).mockRejectedValue(dupErr)
+      const findErr = new Error('DB unreachable');
+      (IdempotencyKey.findOne as jest.Mock).mockRejectedValue(findErr)
 
       const req = mockReq()
       const res = mockRes()

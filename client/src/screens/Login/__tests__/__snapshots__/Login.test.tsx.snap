@@ -26,36 +26,32 @@ exports[`Login renders the login form 1`] = `
         >
           <label
             class="label"
-            for="email"
           >
             Email
+            <input
+              autocomplete="email"
+              class="input"
+              required=""
+              type="email"
+              value=""
+            />
           </label>
-          <input
-            autocomplete="email"
-            class="input"
-            id="email"
-            required=""
-            type="email"
-            value=""
-          />
         </div>
         <div
           class="field"
         >
           <label
             class="label"
-            for="password"
           >
             Password
+            <input
+              autocomplete="current-password"
+              class="input"
+              required=""
+              type="password"
+              value=""
+            />
           </label>
-          <input
-            autocomplete="current-password"
-            class="input"
-            id="password"
-            required=""
-            type="password"
-            value=""
-          />
         </div>
         <button
           class="button"

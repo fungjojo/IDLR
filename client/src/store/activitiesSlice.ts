@@ -25,8 +25,8 @@ const initialState: ActivitiesState = {
 }
 
 export const fetchActivitiesThunk = createAsyncThunk<
-  PaginatedActivities,
-  { page: number; limit: number }
+PaginatedActivities,
+{ page: number; limit: number }
 >('activities/fetchActivities', ({ page, limit }) => fetchActivities(page, limit))
 
 export const fetchActivityThunk = createAsyncThunk<Activity, string>(
@@ -110,6 +110,7 @@ const activitiesSlice = createSlice({
   },
 })
 
-export const { setActivities, setSelected, setLoading, setError, removeActivity } =
-  activitiesSlice.actions
+export const {
+  setActivities, setSelected, setLoading, setError, removeActivity,
+} = activitiesSlice.actions
 export default activitiesSlice.reducer

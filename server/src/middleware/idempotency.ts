@@ -8,14 +8,18 @@ const MAX_KEY_LENGTH = 36
 
 function isDuplicateKeyError(err: unknown): boolean {
   return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: number }).code === 11000
+    typeof err === 'object'
+    && err !== null
+    && 'code' in err
+    && (err as { code: number }).code === 11000
   )
 }
 
-export async function idempotency(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function idempotency(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   const key = req.headers['idempotency-key']
   if (!key || typeof key !== 'string') {
     next()

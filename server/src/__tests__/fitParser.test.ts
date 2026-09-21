@@ -1,6 +1,6 @@
 import { parseFitBuffer } from '../services/fitParser'
 
-const SEMICIRCLES_TO_DEGREES = 180 / Math.pow(2, 31)
+const SEMICIRCLES_TO_DEGREES = 180 / 2 ** 31
 
 const mockParseAsync = jest.fn()
 
@@ -26,8 +26,18 @@ const SESSION = {
 }
 
 const RECORDS = [
-  { heart_rate: 140, speed: 3.0, position_lat: Math.round(51.5 / SEMICIRCLES_TO_DEGREES), position_long: Math.round(-0.1 / SEMICIRCLES_TO_DEGREES) },
-  { heart_rate: 145, speed: 3.2, position_lat: Math.round(51.501 / SEMICIRCLES_TO_DEGREES), position_long: Math.round(-0.101 / SEMICIRCLES_TO_DEGREES) },
+  {
+    heart_rate: 140,
+    speed: 3.0,
+    position_lat: Math.round(51.5 / SEMICIRCLES_TO_DEGREES),
+    position_long: Math.round(-0.1 / SEMICIRCLES_TO_DEGREES),
+  },
+  {
+    heart_rate: 145,
+    speed: 3.2,
+    position_lat: Math.round(51.501 / SEMICIRCLES_TO_DEGREES),
+    position_long: Math.round(-0.101 / SEMICIRCLES_TO_DEGREES),
+  },
   { heart_rate: 150, speed: 3.1 },
 ]
 

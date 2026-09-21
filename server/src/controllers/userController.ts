@@ -17,7 +17,9 @@ export async function getUsers(_req: AuthRequest, res: Response): Promise<void> 
   try {
     const users = await User.find(
       {},
-      { passwordHash: 0, stravaAccessToken: 0, stravaRefreshToken: 0, stravaAthleteId: 0 },
+      {
+        passwordHash: 0, stravaAccessToken: 0, stravaRefreshToken: 0, stravaAthleteId: 0,
+      },
     ).sort({ createdAt: -1 })
     const payload: UserResponse[] = users.map((u) => ({
       id: u._id.toString(),

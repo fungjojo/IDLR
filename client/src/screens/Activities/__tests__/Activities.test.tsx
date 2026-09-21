@@ -1,8 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import {
+  render, screen, fireEvent, waitFor,
+} from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Activities from '../index'
 import * as activitiesService from '../../../services/activities'
 import type { Activity } from '../../../types/activity'
+
+import { useAppSelector } from '../../../store/hooks'
 
 jest.mock('../../../services/api')
 jest.mock('../../../services/activities')
@@ -26,8 +30,6 @@ jest.mock('../../../store/activitiesSlice', () => ({
     payload: args,
   })),
 }))
-
-import { useAppSelector } from '../../../store/hooks'
 const mockUseAppSelector = useAppSelector as jest.Mock
 
 const mockedUpload = activitiesService.uploadActivity as jest.MockedFunction<

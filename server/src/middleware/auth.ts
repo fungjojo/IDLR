@@ -21,13 +21,13 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
       audience: 'idlr-client',
     }) as unknown
     if (
-      typeof payload !== 'object' ||
-      payload === null ||
-      !('id' in payload) ||
-      !('role' in payload) ||
-      typeof (payload as Record<string, unknown>).id !== 'string' ||
-      ((payload as Record<string, unknown>).role !== 'admin' &&
-        (payload as Record<string, unknown>).role !== 'member')
+      typeof payload !== 'object'
+      || payload === null
+      || !('id' in payload)
+      || !('role' in payload)
+      || typeof (payload as Record<string, unknown>).id !== 'string'
+      || ((payload as Record<string, unknown>).role !== 'admin'
+        && (payload as Record<string, unknown>).role !== 'member')
     ) {
       res.status(401).json({ message: 'Invalid token payload' })
       return

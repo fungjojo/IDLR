@@ -1,4 +1,6 @@
-import { Schema, model, type Document, type Types } from 'mongoose'
+import {
+  Schema, model, type Document, type Types,
+} from 'mongoose'
 
 export interface IActivity extends Document {
   userId: Types.ObjectId
