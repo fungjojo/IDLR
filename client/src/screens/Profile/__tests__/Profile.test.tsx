@@ -12,7 +12,9 @@ function makeStore(stravaAthleteId?: number) {
     reducer: { auth: authReducer },
     preloadedState: {
       auth: {
-        user: { id: 'u1', name: 'Jojo', email: 'j@j.com', role: 'member' as const, maxHR: 185, stravaAthleteId },
+        user: {
+          id: 'u1', name: 'Jojo', email: 'j@j.com', role: 'member' as const, maxHR: 185, stravaAthleteId,
+        },
         loading: false,
         initialized: true,
       },

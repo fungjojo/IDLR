@@ -7,7 +7,7 @@ import { logger } from '../utils/logger'
 import type { AuthRequest } from '../middleware/auth'
 
 export async function uploadActivity(req: AuthRequest, res: Response): Promise<void> {
-  const file = req.file
+  const { file } = req
   if (!file) {
     res.status(400).json({ message: 'No file provided' })
     return
@@ -58,7 +58,9 @@ export async function getActivities(req: AuthRequest, res: Response): Promise<vo
       Activity.countDocuments({ userId: req.user!.id }),
     ])
     const pages = Math.ceil(total / limit)
-    res.json({ activities, total, page, pages })
+    res.json({
+      activities, total, page, pages,
+    })
   } catch (err) {
     logger.error({ err }, 'Failed to fetch activities')
     res.status(500).json({ message: 'Server error' })

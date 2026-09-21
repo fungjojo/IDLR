@@ -22,6 +22,7 @@ exports[`Admin renders member list after fetch 1`] = `
       </div>
       <button
         class="addButton"
+        type="button"
       >
         Add Member
       </button>
@@ -43,7 +44,9 @@ exports[`Admin renders member list after fetch 1`] = `
           <th>
             Max HR
           </th>
-          <th />
+          <th
+            aria-label="Actions"
+          />
         </tr>
       </thead>
       <tbody>
@@ -89,6 +92,7 @@ exports[`Admin renders member list after fetch 1`] = `
             >
               <button
                 class="deleteButton"
+                type="button"
               >
                 Delete
               </button>

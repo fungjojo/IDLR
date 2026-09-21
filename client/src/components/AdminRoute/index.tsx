@@ -11,5 +11,5 @@ export default function AdminRoute({ children }: Props) {
   const user = useAppSelector((state) => state.auth.user)
   if (!user) return <Navigate to={ROUTES.LOGIN} replace />
   if (user.role !== 'admin') return <Navigate to={ROUTES.DASHBOARD} replace />
-  return <>{children}</>
+  return children
 }

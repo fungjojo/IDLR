@@ -31,11 +31,11 @@ function renderWithRoute(user: BaseUser | null, initialPath = '/protected') {
         <Routes>
           <Route
             path="/protected"
-            element={
+            element={(
               <PrivateRoute>
                 <div>Protected content</div>
               </PrivateRoute>
-            }
+            )}
           />
           <Route path="/login" element={<div>Login page</div>} />
         </Routes>

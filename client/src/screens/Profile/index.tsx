@@ -17,9 +17,11 @@ export default function Profile() {
   const statusMessage = stravaStatusMessage(stravaParam)
 
   useEffect(() => {
-    if (!stravaParam) return
-    const t = setTimeout(() => setSearchParams({}, { replace: true }), 4000)
-    return () => clearTimeout(t)
+    if (stravaParam) {
+      const t = setTimeout(() => setSearchParams({}, { replace: true }), 4000)
+      return () => clearTimeout(t)
+    }
+    return undefined
   }, [stravaParam, setSearchParams])
 
   const isStravaConnected = Boolean(user?.stravaAthleteId)

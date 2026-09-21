@@ -11,12 +11,14 @@ exports[`ActivityDetail screen matches snapshot 1`] = `
       <button
         aria-label="← Activities"
         class="backBtn"
+        type="button"
       >
         ← Activities
       </button>
       <button
         aria-label="Delete"
         class="deleteBtn"
+        type="button"
       >
         Delete
       </button>
@@ -111,12 +113,12 @@ exports[`ActivityDetail screen matches snapshot 1`] = `
       <span
         class="pill"
       >
-        Pace: 5:10 /km
+        Pace:5:10 /km
       </span>
       <span
         class="pill"
       >
-        Cadence: 176 spm
+        Cadence:176 spm
       </span>
       <span
         class="pill"

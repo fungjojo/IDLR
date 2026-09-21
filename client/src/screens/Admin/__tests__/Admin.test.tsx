@@ -1,4 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import {
+  render, screen, fireEvent, waitFor,
+} from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router-dom'
 import { configureStore } from '@reduxjs/toolkit'
@@ -10,18 +12,30 @@ import * as usersService from '../../../services/users'
 jest.mock('../../../services/api')
 jest.mock('../../../services/users')
 
-const mockedFetchMembers = usersService.fetchMembers as jest.MockedFunction<typeof usersService.fetchMembers>
-const mockedDeleteMember = usersService.deleteMember as jest.MockedFunction<typeof usersService.deleteMember>
-const mockedCreateMember = usersService.createMember as jest.MockedFunction<typeof usersService.createMember>
+const mockedFetchMembers = usersService.fetchMembers as jest.MockedFunction<
+  typeof usersService.fetchMembers
+>
+const mockedDeleteMember = usersService.deleteMember as jest.MockedFunction<
+  typeof usersService.deleteMember
+>
+const mockedCreateMember = usersService.createMember as jest.MockedFunction<
+  typeof usersService.createMember
+>
 
 const mockMembers: usersService.Member[] = [
-  { id: 'user-id-1', name: 'Alice', email: 'alice@example.com', role: 'admin', maxHR: 185, createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: 'user-id-2', name: 'Bob', email: 'bob@example.com', role: 'member', maxHR: 180, createdAt: '2026-01-02T00:00:00.000Z' },
+  {
+    id: 'user-id-1', name: 'Alice', email: 'alice@example.com', role: 'admin', maxHR: 185, createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'user-id-2', name: 'Bob', email: 'bob@example.com', role: 'member', maxHR: 180, createdAt: '2026-01-02T00:00:00.000Z',
+  },
 ]
 
 function renderAdmin(currentUserId = 'user-id-1') {
   const preloadedAuth = {
-    user: { id: currentUserId, name: 'Alice', email: 'alice@example.com', role: 'admin' as const, maxHR: 185 },
+    user: {
+      id: currentUserId, name: 'Alice', email: 'alice@example.com', role: 'admin' as const, maxHR: 185,
+    },
     loading: false,
     initialized: true,
   }

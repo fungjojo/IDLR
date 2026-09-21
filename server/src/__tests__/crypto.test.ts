@@ -39,7 +39,7 @@ describe('crypto utils', () => {
 
   it('throws on tampered ciphertext', () => {
     const ciphertext = encrypt('hello')
-    const tampered = ciphertext.slice(0, -4) + 'ffff'
+    const tampered = `${ciphertext.slice(0, -4)}ffff`
     expect(() => decrypt(tampered)).toThrow()
   })
 

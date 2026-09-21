@@ -1,9 +1,15 @@
-import adminReducer, { setMembers, addMember, removeMember, setLoading, setError } from '../adminSlice'
+import adminReducer, {
+  setMembers, addMember, removeMember, setLoading, setError,
+} from '../adminSlice'
 import type { Member } from '../../services/users'
 
 const mockMembers: Member[] = [
-  { id: '1', name: 'Alice', email: 'alice@example.com', role: 'admin', maxHR: 185, createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: '2', name: 'Bob', email: 'bob@example.com', role: 'member', maxHR: 180, createdAt: '2026-01-02T00:00:00.000Z' },
+  {
+    id: '1', name: 'Alice', email: 'alice@example.com', role: 'admin', maxHR: 185, createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: '2', name: 'Bob', email: 'bob@example.com', role: 'member', maxHR: 180, createdAt: '2026-01-02T00:00:00.000Z',
+  },
 ]
 
 const initialState = { members: [], loading: false, error: null }
@@ -20,7 +26,9 @@ describe('adminSlice', () => {
 
   it('addMember prepends a new member to the list', () => {
     const loaded = { ...initialState, members: mockMembers }
-    const newMember: Member = { id: '3', name: 'Carol', email: 'carol@example.com', role: 'member', maxHR: 190, createdAt: '2026-01-03T00:00:00.000Z' }
+    const newMember: Member = {
+      id: '3', name: 'Carol', email: 'carol@example.com', role: 'member', maxHR: 190, createdAt: '2026-01-03T00:00:00.000Z',
+    }
     const state = adminReducer(loaded, addMember(newMember))
     expect(state.members).toHaveLength(3)
     expect(state.members[0].id).toBe('3')

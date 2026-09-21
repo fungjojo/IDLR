@@ -27,9 +27,9 @@ function adminCookie(): string {
 }
 
 beforeAll(() => {
-  process.env.JWT_SECRET = JWT_SECRET
+  process.env.JWT_SECRET = JWT_SECRET;
   // adminOnly now does a DB lookup for JWT-admin users; confirm admin role in DB
-  ;(User.findById as jest.Mock).mockReturnValue({
+  (User.findById as jest.Mock).mockReturnValue({
     select: jest.fn().mockReturnThis(),
     lean: jest.fn().mockResolvedValue({ role: 'admin' }),
   })

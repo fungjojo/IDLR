@@ -52,13 +52,17 @@ function issueTokenPair(userId: string, role: 'admin' | 'member') {
   const accessToken = jwt.sign(
     { id: userId, role },
     process.env.JWT_SECRET as string,
-    { expiresIn: ACCESS_EXPIRES, algorithm: 'HS256', jwtid: randomUUID(), issuer: ISSUER, audience: AUDIENCE },
+    {
+      expiresIn: ACCESS_EXPIRES, algorithm: 'HS256', jwtid: randomUUID(), issuer: ISSUER, audience: AUDIENCE,
+    },
   )
   const refreshJti = randomUUID()
   const refreshToken = jwt.sign(
     { id: userId },
     process.env.REFRESH_TOKEN_SECRET as string,
-    { expiresIn: REFRESH_EXPIRES, algorithm: 'HS256', jwtid: refreshJti, issuer: ISSUER, audience: AUDIENCE },
+    {
+      expiresIn: REFRESH_EXPIRES, algorithm: 'HS256', jwtid: refreshJti, issuer: ISSUER, audience: AUDIENCE,
+    },
   )
   return { accessToken, refreshToken, refreshJti }
 }
@@ -158,10 +162,10 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     }) as unknown
 
     if (
-      typeof raw !== 'object' || raw === null ||
-      !('id' in raw) || !('jti' in raw) ||
-      typeof (raw as Record<string, unknown>).id !== 'string' ||
-      typeof (raw as Record<string, unknown>).jti !== 'string'
+      typeof raw !== 'object' || raw === null
+      || !('id' in raw) || !('jti' in raw)
+      || typeof (raw as Record<string, unknown>).id !== 'string'
+      || typeof (raw as Record<string, unknown>).jti !== 'string'
     ) {
       res.status(401).json({ message: 'Invalid token' })
       return
@@ -194,7 +198,8 @@ export async function refresh(req: Request, res: Response): Promise<void> {
       return
     }
 
-    const { accessToken, refreshToken: newRefreshToken, refreshJti: newJti } = issueTokenPair(user._id.toString(), user.role)
+    const tokenPair = issueTokenPair(user._id.toString(), user.role)
+    const { accessToken, refreshToken: newRefreshToken, refreshJti: newJti } = tokenPair
     await RefreshToken.create({
       jti: newJti,
       userId: user._id,
@@ -221,9 +226,9 @@ export async function logout(req: Request, res: Response): Promise<void> {
         audience: AUDIENCE,
       }) as unknown
       if (
-        typeof raw === 'object' && raw !== null &&
-        'jti' in raw &&
-        typeof (raw as Record<string, unknown>).jti === 'string'
+        typeof raw === 'object' && raw !== null
+        && 'jti' in raw
+        && typeof (raw as Record<string, unknown>).jti === 'string'
       ) {
         const { jti, id: userId } = raw as { jti: string; id?: string }
         await RefreshToken.findOneAndUpdate(
@@ -243,7 +248,9 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function register(req: AuthRequest, res: Response): Promise<void> {
-  const { name, email, password, maxHR = 190 } = req.body as {
+  const {
+    name, email, password, maxHR = 190,
+  } = req.body as {
     name?: string
     email?: string
     password?: string
@@ -280,8 +287,12 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
-    const user = await User.create({ name, email: normalisedEmail, passwordHash, role: 'member', maxHR })
-    logger.info({ event: 'auth.register.success', userId: user._id.toString(), email: normalisedEmail, role: 'member' }, 'User registered')
+    const user = await User.create({
+      name, email: normalisedEmail, passwordHash, role: 'member', maxHR,
+    })
+    logger.info({
+      event: 'auth.register.success', userId: user._id.toString(), email: normalisedEmail, role: 'member',
+    }, 'User registered')
 
     res.status(201).json({
       user: {
@@ -326,10 +337,16 @@ export async function getSessions(req: AuthRequest, res: Response): Promise<void
   try {
     const sessions = await RefreshToken.find(
       { userId: req.user!.id, revokedAt: { $exists: false }, expiresAt: { $gt: new Date() } },
-      { jti: 1, createdAt: 1, expiresAt: 1, _id: 0 },
+      {
+        jti: 1, createdAt: 1, expiresAt: 1, _id: 0,
+      },
     ).sort({ createdAt: -1 })
     res.json({
-      sessions: sessions.map((s) => ({ jti: s.jti, createdAt: s.createdAt, expiresAt: s.expiresAt })),
+      sessions: sessions.map((s) => ({
+        jti: s.jti,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+      })),
     })
   } catch (err) {
     logger.error({ err }, 'Server error')

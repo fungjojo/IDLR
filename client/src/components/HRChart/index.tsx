@@ -23,7 +23,12 @@ export default function HRChart({ hrStream, durationSeconds }: HRChartProps) {
   return (
     <div className={styles.container}>
       <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+        <LineChart
+          data={data}
+          margin={{
+            top: 8, right: 16, bottom: 0, left: 0,
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis
             dataKey="t"

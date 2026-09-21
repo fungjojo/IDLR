@@ -2,7 +2,11 @@ import { type Response, type NextFunction } from 'express'
 import { User } from '../models/User'
 import { type AuthRequest } from './auth'
 
-export async function adminOnly(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function adminOnly(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   if (!req.user) {
     res.status(403).json({ message: 'Admin access required' })
     return

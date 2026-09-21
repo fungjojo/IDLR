@@ -52,7 +52,7 @@ exports[`ActivityCard matches snapshot 1`] = `
       <span
         class="stat hrAvg"
       >
-        ♥ 158 avg
+        ♥158 avg
       </span>
       <span
         class="sep"
@@ -62,7 +62,7 @@ exports[`ActivityCard matches snapshot 1`] = `
       <span
         class="stat hrMax"
       >
-        ♥ 178 max
+        ♥178 max
       </span>
     </div>
   </div>

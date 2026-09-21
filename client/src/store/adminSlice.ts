@@ -35,5 +35,7 @@ const adminSlice = createSlice({
   },
 })
 
-export const { setMembers, addMember, removeMember, setLoading, setError } = adminSlice.actions
+export const {
+  setMembers, addMember, removeMember, setLoading, setError,
+} = adminSlice.actions
 export default adminSlice.reducer

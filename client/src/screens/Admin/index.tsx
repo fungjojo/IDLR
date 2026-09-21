@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { setMembers, addMember, removeMember, setLoading, setError } from '../../store/adminSlice'
+import {
+  setMembers, addMember, removeMember, setLoading, setError,
+} from '../../store/adminSlice'
 import { fetchMembers, deleteMember, createMember } from '../../services/users'
 import styles from './Admin.module.css'
 
@@ -14,7 +16,9 @@ interface FormState {
   maxHR: number | ''
 }
 
-const EMPTY_FORM: FormState = { name: '', email: '', password: '', maxHR: DEFAULT_MAX_HR }
+const EMPTY_FORM: FormState = {
+  name: '', email: '', password: '', maxHR: DEFAULT_MAX_HR,
+}
 
 export default function Admin() {
   const dispatch = useAppDispatch()
@@ -80,20 +84,23 @@ export default function Admin() {
       return
     }
     const maxHR = form.maxHR === '' ? NaN : form.maxHR
-    if (isNaN(maxHR) || maxHR < 100 || maxHR > 250) {
+    if (Number.isNaN(maxHR) || maxHR < 100 || maxHR > 250) {
       setFormError('Max HR must be between 100 and 250')
       return
     }
 
     setSubmitting(true)
     try {
-      const member = await createMember({ name: form.name.trim(), email: form.email.trim(), password: form.password, maxHR })
+      const member = await createMember({
+        name: form.name.trim(), email: form.email.trim(), password: form.password, maxHR,
+      })
       dispatch(addMember(member))
       resetForm()
       setShowForm(false)
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      const message = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
       if (status === 409) {
         setFormError('Email already in use')
       } else if (message) {
@@ -114,7 +121,11 @@ export default function Admin() {
           <p className={styles.subtitle}>Manage team members</p>
         </div>
         {!showForm && (
-          <button className={styles.addButton} onClick={() => setShowForm(true)}>
+          <button
+            type="button"
+            className={styles.addButton}
+            onClick={() => setShowForm(true)}
+          >
             Add Member
           </button>
         )}
@@ -126,53 +137,61 @@ export default function Admin() {
           {formError && <p className={styles.error}>{formError}</p>}
           <div className={styles.fields}>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="member-name">Name</label>
-              <input
-                id="member-name"
-                className={styles.input}
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Full name"
-                disabled={submitting}
-              />
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className={styles.label}>
+                Name
+                <input
+                  className={styles.input}
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Full name"
+                  disabled={submitting}
+                />
+              </label>
             </div>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="member-email">Email</label>
-              <input
-                id="member-email"
-                className={styles.input}
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="email@example.com"
-                disabled={submitting}
-              />
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className={styles.label}>
+                Email
+                <input
+                  className={styles.input}
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="email@example.com"
+                  disabled={submitting}
+                />
+              </label>
             </div>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="member-password">Password</label>
-              <input
-                id="member-password"
-                className={styles.input}
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Min 8 characters"
-                disabled={submitting}
-              />
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className={styles.label}>
+                Password
+                <input
+                  className={styles.input}
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Min 8 characters"
+                  disabled={submitting}
+                />
+              </label>
             </div>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="member-maxhr">Max HR</label>
-              <input
-                id="member-maxhr"
-                className={styles.input}
-                type="number"
-                value={form.maxHR}
-                onChange={(e) => setForm((f) => ({ ...f, maxHR: e.target.value === '' ? '' : Number(e.target.value) }))}
-                min={100}
-                max={250}
-                disabled={submitting}
-              />
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className={styles.label}>
+                Max HR
+                <input
+                  className={styles.input}
+                  type="number"
+                  value={form.maxHR}
+                  onChange={(e) => setForm((f) => ({ ...f, maxHR: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  min={100}
+                  max={250}
+                  disabled={submitting}
+                />
+              </label>
             </div>
           </div>
           <div className={styles.formActions}>
@@ -188,11 +207,9 @@ export default function Admin() {
 
       {error && <p className={styles.error}>{error}</p>}
 
-      {loading ? (
-        <p className={styles.loading}>Loading members…</p>
-      ) : members.length === 0 ? (
-        <p className={styles.empty}>No members yet.</p>
-      ) : (
+      {loading && <p className={styles.loading}>Loading members…</p>}
+      {!loading && members.length === 0 && <p className={styles.empty}>No members yet.</p>}
+      {!loading && members.length > 0 && (
         <table className={styles.table}>
           <thead>
             <tr>
@@ -200,7 +217,7 @@ export default function Admin() {
               <th>Email</th>
               <th>Role</th>
               <th>Max HR</th>
-              <th />
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -220,6 +237,7 @@ export default function Admin() {
                       {confirmDeleteId === member.id ? (
                         <>
                           <button
+                            type="button"
                             className={styles.confirmButton}
                             onClick={() => handleDelete(member.id)}
                             disabled={deleting}
@@ -227,6 +245,7 @@ export default function Admin() {
                             Confirm
                           </button>
                           <button
+                            type="button"
                             className={styles.cancelButton}
                             onClick={() => setConfirmDeleteId(null)}
                             disabled={deleting}
@@ -236,6 +255,7 @@ export default function Admin() {
                         </>
                       ) : (
                         <button
+                          type="button"
                           className={styles.deleteButton}
                           onClick={() => setConfirmDeleteId(member.id)}
                         >

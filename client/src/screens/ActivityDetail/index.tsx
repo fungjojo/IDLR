@@ -58,6 +58,7 @@ export default function ActivityDetail() {
     <div className={styles.container}>
       <div className={styles.header}>
         <button
+          type="button"
           className={styles.backBtn}
           onClick={() => navigate(ROUTES.ACTIVITIES)}
           aria-label="← Activities"
@@ -68,10 +69,17 @@ export default function ActivityDetail() {
         {confirming ? (
           <div className={styles.confirmRow}>
             <span className={styles.confirmMsg}>Delete this activity?</span>
-            <button className={styles.confirmBtn} onClick={handleDelete} disabled={loading} aria-label="Confirm">
+            <button
+              type="button"
+              className={styles.confirmBtn}
+              onClick={handleDelete}
+              disabled={loading}
+              aria-label="Confirm"
+            >
               {loading ? 'Deleting…' : 'Confirm'}
             </button>
             <button
+              type="button"
               className={styles.cancelBtn}
               onClick={() => setConfirming(false)}
               aria-label="Cancel"
@@ -81,6 +89,7 @@ export default function ActivityDetail() {
           </div>
         ) : (
           <button
+            type="button"
             className={styles.deleteBtn}
             onClick={() => setConfirming(true)}
             aria-label="Delete"
@@ -116,13 +125,26 @@ export default function ActivityDetail() {
       )}
 
       <div className={styles.pills}>
-        {pace && <span className={styles.pill}>Pace: {pace}</span>}
+        {pace && (
+        <span className={styles.pill}>
+          Pace:
+          {pace}
+        </span>
+        )}
         {selected.cadenceAvg != null && (
-          <span className={styles.pill}>Cadence: {selected.cadenceAvg} spm</span>
+          <span className={styles.pill}>
+            Cadence:
+            {selected.cadenceAvg}
+            {' '}
+            spm
+          </span>
         )}
         {selected.elevationGainMeters != null && (
           <span className={styles.pill}>
-            Elevation: +{Math.round(selected.elevationGainMeters)} m
+            Elevation: +
+            {Math.round(selected.elevationGainMeters)}
+            {' '}
+            m
           </span>
         )}
       </div>
