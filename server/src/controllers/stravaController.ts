@@ -54,12 +54,14 @@ export async function stravaCallback(req: AuthRequest, res: Response): Promise<v
 
   try {
     const tokens = await exchangeCode(code)
-    await User.findByIdAndUpdate(req.user!.id, {
-      stravaAccessToken: tokens.access_token,
-      stravaRefreshToken: tokens.refresh_token,
-      stravaTokenExpiresAt: tokens.expires_at,
-      stravaAthleteId: tokens.athlete?.id,
-    })
+    const user = await User.findById(req.user!.id)
+    if (user) {
+      user.stravaAccessToken = tokens.access_token
+      user.stravaRefreshToken = tokens.refresh_token
+      user.stravaTokenExpiresAt = tokens.expires_at
+      user.stravaAthleteId = tokens.athlete?.id
+      await user.save()
+    }
     logger.info({ event: 'strava.connected', userId: req.user!.id }, 'Strava connected')
     res.redirect(`${CLIENT_URL()}/profile?strava=connected`)
   } catch (err) {
@@ -107,26 +109,43 @@ export async function stravaSync(req: AuthRequest, res: Response): Promise<void>
   }
 
   // Batch duplicate check — one query instead of N round-trips
-  const incomingIds = rawActivities.map(r => r.id)
+  const incomingIds = rawActivities.map((r) => r.id)
   const existingDocs = await Activity.find(
     { userId: user._id, stravaActivityId: { $in: incomingIds } },
     { stravaActivityId: 1 },
   )
-  const existingIds = new Set(existingDocs.map(a => a.stravaActivityId))
+  const existingIds = new Set(existingDocs.map((a) => a.stravaActivityId))
 
   const results = { created: 0, skipped: 0 }
 
+  // Sequential by necessity — fetching all streams concurrently would burst
+  // past Strava's per-athlete rate limit, especially on a large first sync.
+  // eslint-disable-next-line no-restricted-syntax
   for (const raw of rawActivities) {
-    if (existingIds.has(raw.id)) { results.skipped++; continue }
+    if (existingIds.has(raw.id)) {
+      results.skipped += 1
+      // eslint-disable-next-line no-continue
+      continue
+    }
 
     try {
+      // eslint-disable-next-line no-await-in-loop
       const { hrStream, paceStream } = await fetchActivityStreams(raw.id, accessToken)
       const data = normaliseActivity(raw, hrStream, paceStream)
-      await Activity.create({ userId: user._id, source: 'strava', stravaActivityId: raw.id, ...data })
-      results.created++
+      // eslint-disable-next-line no-await-in-loop
+      await Activity.create({
+        userId: user._id,
+        source: 'strava',
+        stravaActivityId: raw.id,
+        ...data,
+      })
+      results.created += 1
     } catch (err) {
-      logger.warn({ err, stravaActivityId: raw.id }, 'Skipping activity due to stream fetch error')
-      results.skipped++
+      logger.warn(
+        { err, stravaActivityId: raw.id },
+        'Skipping activity due to stream fetch error',
+      )
+      results.skipped += 1
     }
   }
 
